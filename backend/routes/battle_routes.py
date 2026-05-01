@@ -24,7 +24,23 @@ def start_battle():
     
     result = agent.generate_debate(topic, persona_a, persona_b)
 
+    from db.connection import Database
+    import json
+    import uuid
+
+    # Insert into database
+    battle_id = str(uuid.uuid4())
+    try:
+        Database.execute_write(
+            """INSERT INTO prompt_battles (id, topic, persona_a, persona_b, debate_transcript, winner)
+               VALUES (%s, %s, %s, %s, %s, %s)""",
+            (battle_id, topic, persona_a, persona_b, json.dumps(result.get('debate', [])), result.get('winner', 'Draw'))
+        )
+    except Exception as e:
+        print(f"Failed to save battle to DB: {e}")
+
     return jsonify({
+        'id': battle_id,
         'topic': topic,
         'persona_a': persona_a,
         'persona_b': persona_b,

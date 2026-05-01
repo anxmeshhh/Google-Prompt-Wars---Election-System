@@ -253,6 +253,16 @@ def fact_check_claim():
     
     result = agent.verify_claim(claim, live_context)
     
+    from db.connection import Database
+    try:
+        Database.execute_write(
+            """INSERT INTO fact_check_history (user_id, claim, verdict, confidence_score, reasoning)
+               VALUES (%s, %s, %s, %s, %s)""",
+            (user['id'], claim, result.get('verdict', 'ERROR'), result.get('confidence_score', 0), result.get('reasoning', ''))
+        )
+    except Exception as e:
+        print(f"Failed to save fact check to DB: {e}")
+    
     return jsonify({
         'claim': claim,
         'verdict': result.get('verdict', 'ERROR'),
@@ -264,6 +274,29 @@ def fact_check_claim():
 # ═══════════════════════════════════════════════════
 # VOTER IQ QUIZ
 # ═══════════════════════════════════════════════════
+
+@content_bp.route('/api/quiz/submit', methods=['POST'])
+def submit_quiz_score():
+    """Save the user's Voter IQ final score."""
+    user, role = _get_current_user()
+    if not user:
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    data = request.get_json()
+    score = data.get('score', 0)
+    total = data.get('total', 5)
+    rank = data.get('rank', 'First-Time Voter')
+
+    from db.connection import Database
+    try:
+        Database.execute_write(
+            """INSERT INTO voter_iq_scores (user_id, score, total_questions, rank_title)
+               VALUES (%s, %s, %s, %s)""",
+            (user['id'], score, total, rank)
+        )
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 QUIZ_BANK = [
     {

@@ -180,3 +180,24 @@ INSERT INTO peak_multipliers (hour, multiplier) VALUES
 (11, 1.5), (12, 1.0), (13, 0.8), (14, 1.0),
 (15, 1.5), (16, 2.0), (17, 2.5), (18, 1.0)
 ON DUPLICATE KEY UPDATE multiplier = VALUES(multiplier);
+
+CREATE TABLE IF NOT EXISTS fact_check_history (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    claim TEXT NOT NULL,
+    verdict VARCHAR(50) NOT NULL,
+    confidence_score INT NOT NULL,
+    reasoning TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS voter_iq_scores (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    score INT NOT NULL,
+    total_questions INT NOT NULL,
+    rank_title VARCHAR(100) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+);

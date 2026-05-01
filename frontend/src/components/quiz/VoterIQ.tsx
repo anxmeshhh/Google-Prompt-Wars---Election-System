@@ -76,12 +76,26 @@ export default function VoterIQ() {
     }
   }
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentIndex < questions.length - 1) {
       setCurrentIndex(i => i + 1)
       setSelectedOption(null)
       setTimeLeft(15)
     } else {
+      const rank = getRank(score)
+      const token = localStorage.getItem('electaverse_token')
+      try {
+        await fetch(`${API}/api/quiz/submit`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({ score, total: questions.length, rank: rank.title })
+        })
+      } catch (e) {
+        console.error("Failed to save score", e)
+      }
       setIsFinished(true)
     }
   }
