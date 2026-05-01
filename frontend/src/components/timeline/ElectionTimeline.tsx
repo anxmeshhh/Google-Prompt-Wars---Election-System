@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, ChevronUp, MessageSquare, Send, Loader2, Shield, Eye, Users } from 'lucide-react'
+import { ChevronDown, ChevronUp, MessageSquare, Send, Loader2, Shield, Eye, Users, Activity } from 'lucide-react'
 
 const API = 'http://localhost:5000'
 
@@ -23,9 +23,10 @@ interface Props {
   token: string | null
   userRole: string
   currentPhase?: string
+  stats?: any
 }
 
-export default function ElectionTimeline({ token, userRole, currentPhase }: Props) {
+export default function ElectionTimeline({ token, userRole, currentPhase, stats }: Props) {
   const [phases, setPhases] = useState<Phase[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<number | null>(null)
@@ -174,6 +175,38 @@ export default function ElectionTimeline({ token, userRole, currentPhase }: Prop
                       style={{ overflow: 'hidden' }}
                     >
                       <div style={{ padding: '0 24px 24px', borderTop: '1px solid var(--border)' }}>
+                        {/* Real-Time Live Data (If Active) */}
+                        {isActive && stats && (
+                          <div style={{
+                            margin: '16px 0', padding: 16, borderRadius: 'var(--radius-sm)',
+                            background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)',
+                            display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}>
+                              <Activity size={16} style={{ color: 'var(--color-success)' }} />
+                              <h4 style={{ margin: 0, fontSize: 13, color: 'var(--color-success)', textTransform: 'uppercase', letterSpacing: 1 }}>Live Phase Data</h4>
+                            </div>
+                            <div style={{ display: 'flex', gap: 24, width: '100%' }}>
+                               <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                 <span style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Turnout</span>
+                                 <span style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)' }}>{stats.turnout_percent}%</span>
+                               </div>
+                               <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                 <span style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Avg Queue</span>
+                                 <span style={{ fontSize: 18, fontWeight: 600, color: 'var(--color-accent)' }}>{stats.avg_queue_length} <span style={{fontSize: 12, fontWeight: 400}}>voters</span></span>
+                               </div>
+                               <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                 <span style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Open Incidents</span>
+                                 <span style={{ fontSize: 18, fontWeight: 600, color: stats.open_incidents > 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>{stats.open_incidents}</span>
+                               </div>
+                               <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                 <span style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Active Booths</span>
+                                 <span style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)' }}>{stats.active_booths} / {stats.total_booths}</span>
+                               </div>
+                            </div>
+                          </div>
+                        )}
+
                         {/* Description */}
                         <p style={{ margin: '16px 0', lineHeight: 1.7, color: 'var(--text-secondary)', fontSize: 14 }}>
                           {phase.description}

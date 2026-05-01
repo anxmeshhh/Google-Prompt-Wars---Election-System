@@ -196,8 +196,8 @@ function App() {
           <motion.div key={activeTab} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }}>
             {activeTab === 'home' && <HomePage stats={stats} user={user} />}
-            {activeTab === 'timeline' && <ElectionTimeline token={token} userRole={user.role} currentPhase={stats?.clock?.phase} />}
-            {activeTab === 'guide' && <VoterGuide token={token} userRole={user.role} currentPhase={stats?.clock?.phase} />}
+            {activeTab === 'timeline' && <ElectionTimeline token={token} userRole={user.role} currentPhase={stats?.clock?.phase} stats={stats} />}
+            {activeTab === 'guide' && <VoterGuide token={token} userRole={user.role} currentPhase={stats?.clock?.phase} stats={stats} />}
             {activeTab === 'assistant' && <AIAssistant token={token} userRole={user.role} stats={stats} />}
             {activeTab === 'factcheck' && <PlaceholderPage title="Fact Checker" desc="AI-powered claim verification — coming in Module 6" />}
             {activeTab === 'battle' && <PlaceholderPage title="Prompt Wars Arena" desc="AI vs AI policy debates — coming in Module 7" />}

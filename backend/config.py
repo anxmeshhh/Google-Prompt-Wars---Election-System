@@ -6,6 +6,8 @@ Loads environment variables. All tunable parameters live in MySQL (simulation_co
 import os
 from dotenv import load_dotenv
 
+# Load .env — check backend/ dir first, then project root
+load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 

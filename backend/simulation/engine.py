@@ -111,8 +111,8 @@ class SimulationEngine:
         while self.running and not self.clock.day_complete:
             self._tick()
             
-            # Proactive AI sweep every 10 ticks (~30 seconds)
-            if self.clock.total_ticks - last_sweep_tick >= 10:
+            # Proactive AI sweep every 50 ticks (~2.5 min) to conserve API quota
+            if self.clock.total_ticks - last_sweep_tick >= 50:
                 self._proactive_ai_sweep()
                 last_sweep_tick = self.clock.total_ticks
                 
@@ -135,8 +135,22 @@ class SimulationEngine:
             if booth:
                 try:
                     raw = agent.triage_incident(inc.to_dict(), booth.to_dict())
-                    # generate_json returns a string — parse it
-                    triage_result = _json.loads(raw) if isinstance(raw, str) else raw
+                    # Parse result — could be dict, JSON string, or plain text
+                    if isinstance(raw, dict):
+                        triage_result = raw
+                    elif isinstance(raw, str):
+                        clean = raw.strip()
+                        if clean.startswith('```'):
+                            clean = clean.split('\n', 1)[-1]
+                            if clean.endswith('```'):
+                                clean = clean[:-3].strip()
+                        try:
+                            triage_result = _json.loads(clean)
+                        except _json.JSONDecodeError:
+                            triage_result = {'analysis': clean[:500]}
+                    else:
+                        triage_result = {'analysis': str(raw)[:500]}
+
                     inc.status = 'triaging'
                     inc.ai_recommendation = triage_result.get('analysis', 'Automatic triage complete.')
                     Database.execute_write(

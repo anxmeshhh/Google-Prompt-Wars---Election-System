@@ -12,7 +12,7 @@ class GeminiService:
 
     def __init__(self):
         self.api_key = Config.GEMINI_API_KEY
-        self.model_name = 'gemini-2.0-flash'
+        self.model_name = 'gemini-2.5-flash'
         self._configured = False
         self._configure()
 
@@ -56,7 +56,13 @@ class GeminiService:
                 generation_config={"response_mime_type": "application/json"},
             )
             response = model.generate_content(prompt)
-            return response.text
+            raw = response.text.strip()
+            # Strip markdown code fences if present
+            if raw.startswith('```'):
+                raw = raw.split('\n', 1)[-1]  # remove first line
+                if raw.endswith('```'):
+                    raw = raw[:-3].strip()
+            return raw
         except Exception as e:
             return f'{{"error": "{str(e)}"}}'
 
