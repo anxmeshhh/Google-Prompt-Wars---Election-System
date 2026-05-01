@@ -305,8 +305,47 @@ QUIZ_BANK = [
 
 @content_bp.route('/api/quiz/questions', methods=['GET'])
 def get_quiz_questions():
-    """Return 5 questions for the Voter IQ module."""
-    # We could randomize from a larger bank, but for the demo we return these 5
+    """Return 5 questions for the Voter IQ module, mixing live simulation data and static rules."""
+    import random
+    
+    questions = []
+    
+    # Generate Live Data Questions
+    if _engine and _engine.booths:
+        # Q1: Phase
+        phases = ["PRE_POLL", "ACTIVE_POLLING", "POST_POLL", "COUNTING"]
+        curr_phase = _engine.clock.phase if _engine.clock else "PRE_POLL"
+        questions.append({
+            "id": 101,
+            "question": "LiveOps Scenario: Based on the current real-time simulation, what is the exact operational phase of the election?",
+            "options": phases,
+            "correct_index": phases.index(curr_phase) if curr_phase in phases else 0,
+            "explanation": f"The simulation clock dictates the phase. Currently, the time is {_engine.clock.current_hour:02d}:{_engine.clock.current_minute:02d}, placing us in the {curr_phase} phase."
+        })
+        
+        # Q2: Longest Queue
+        sorted_booths = sorted(_engine.booths, key=lambda b: b.queue_length, reverse=True)
+        if len(sorted_booths) >= 4:
+            longest = sorted_booths[0]
+            others = [b.name for b in sorted_booths[1:4]]
+            options = others + [longest.name]
+            random.shuffle(options)
+            questions.append({
+                "id": 102,
+                "question": "LiveOps Scenario: If you check the dashboard right now, which polling station is experiencing the heaviest voter traffic (longest queue)?",
+                "options": options,
+                "correct_index": options.index(longest.name),
+                "explanation": f"{longest.name} is currently under the most pressure with a live queue length of {longest.queue_length} voters."
+            })
+            
+    # Fill the rest with random static questions to make 5 total
+    needed = 5 - len(questions)
+    static_pool = random.sample(QUIZ_BANK, min(needed, len(QUIZ_BANK)))
+    questions.extend(static_pool)
+    
+    # Shuffle final list so live questions aren't always first
+    random.shuffle(questions)
+    
     return jsonify({
-        'questions': QUIZ_BANK
+        'questions': questions
     })

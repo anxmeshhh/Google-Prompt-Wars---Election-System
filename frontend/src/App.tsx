@@ -487,18 +487,5 @@ function StatCard({ label, value, color }: { label: string; value: string; color
   )
 }
 
-function PlaceholderPage({ title, desc }: { title: string; desc: string }) {
-  return (
-    <div className="section" style={{ textAlign: 'center', paddingTop: 80 }}>
-      <div className="glass" style={{ padding: 48, maxWidth: 500, margin: '0 auto', borderRadius: 'var(--radius-lg)' }}>
-        <h2 style={{ marginBottom: 12 }}>{title}</h2>
-        <p style={{ color: 'var(--text-muted)' }}>{desc}</p>
-        <div style={{ marginTop: 24, padding: '8px 16px', background: 'var(--bg-surface)', borderRadius: 'var(--radius-sm)', display: 'inline-block', fontSize: 13, color: 'var(--color-accent)' }}>
-          🚧 Under Construction
-        </div>
-      </div>
-    </div>
-  )
-}
 
 export default App
