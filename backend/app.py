@@ -12,6 +12,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_socketio import SocketIO
+from flask_caching import Cache
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_talisman import Talisman
 from config import Config
 from db.connection import Database
 from simulation.engine import SimulationEngine
@@ -19,6 +23,27 @@ from simulation.engine import SimulationEngine
 # ── Create Flask app ──
 app = Flask(__name__)
 app.config['SECRET_KEY'] = Config.SECRET_KEY
+
+# ── Extensions ──
+cache = Cache(config={'CACHE_TYPE': 'SimpleCache', 'CACHE_DEFAULT_TIMEOUT': 60})
+cache.init_app(app)
+
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["500 per day", "100 per hour"],
+    storage_uri="memory://"
+)
+
+csp = {
+    'default-src': [
+        '\'self\'',
+        '\'unsafe-inline\'',
+        '\'unsafe-eval\'',
+        '*'
+    ]
+}
+Talisman(app, content_security_policy=csp, force_https=False)
 
 # ── CORS ──
 CORS(app, origins=Config.CORS_ORIGINS)
@@ -64,6 +89,8 @@ app.register_blueprint(db_bp)
 
 # ── Health Check ──
 @app.route('/api/health', methods=['GET'])
+@limiter.exempt
+@cache.cached(timeout=10)
 def health():
     return jsonify({
         'status': 'running',

@@ -20,7 +20,7 @@ class Database:
             return
         cls._pool = pooling.MySQLConnectionPool(
             pool_name='electaverse_pool',
-            pool_size=10,
+            pool_size=32,
             pool_reset_session=True,
             host=Config.DB_HOST,
             user=Config.DB_USER,
