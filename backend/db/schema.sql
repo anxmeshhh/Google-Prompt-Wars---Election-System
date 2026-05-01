@@ -100,11 +100,12 @@ CREATE TABLE IF NOT EXISTS agent_logs (
 
 CREATE TABLE IF NOT EXISTS chat_history (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    session_id VARCHAR(36),
+    user_id INT,
     user_message TEXT NOT NULL,
     agent_used VARCHAR(30),
     ai_response TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS fact_checks (
