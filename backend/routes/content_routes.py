@@ -260,3 +260,53 @@ def fact_check_claim():
         'reasoning': result.get('reasoning', 'Analysis failed.'),
         'official_sources': result.get('official_sources', [])
     })
+
+# ═══════════════════════════════════════════════════
+# VOTER IQ QUIZ
+# ═══════════════════════════════════════════════════
+
+QUIZ_BANK = [
+    {
+        "id": 1,
+        "question": "What is the minimum voting age in India?",
+        "options": ["16 years", "18 years", "21 years", "25 years"],
+        "correct_index": 1,
+        "explanation": "The 61st Amendment Act (1988) lowered the voting age from 21 to 18 years."
+    },
+    {
+        "id": 2,
+        "question": "What is the maximum allowed distance for a voter to travel to a polling booth?",
+        "options": ["1 km", "2 km", "5 km", "10 km"],
+        "correct_index": 1,
+        "explanation": "ECI guidelines mandate that a polling station should be set up within 2 km of every voter's residence."
+    },
+    {
+        "id": 3,
+        "question": "What does VVPAT stand for?",
+        "options": ["Voter Verification Paper Audit Trail", "Voter Verifiable Paper Audit Trail", "Voting Verification Print Audit Trail", "Valid Vote Paper Audit Trail"],
+        "correct_index": 1,
+        "explanation": "Voter Verifiable Paper Audit Trail allows voters to verify that their vote was cast correctly."
+    },
+    {
+        "id": 4,
+        "question": "Can you vote if you are in the queue at the polling booth exactly at the closing time (e.g., 6:00 PM)?",
+        "options": ["No, doors close exactly at 6", "Yes, everyone in line at 6 PM gets a slip to vote", "Only if the Presiding Officer allows", "Only senior citizens"],
+        "correct_index": 1,
+        "explanation": "If you join the queue before the official closing time, you will be issued a slip and allowed to vote, no matter how long it takes."
+    },
+    {
+        "id": 5,
+        "question": "Is it mandatory to have a Voter ID card (EPIC) to cast your vote?",
+        "options": ["Yes, strictly mandatory", "No, other approved IDs like Aadhar or Passport are accepted", "Only for state elections", "No, verbal confirmation is enough"],
+        "correct_index": 1,
+        "explanation": "While EPIC is preferred, the ECI accepts several other alternative photo identity documents like Aadhar, PAN, Driving License, etc., provided your name is on the electoral roll."
+    }
+]
+
+@content_bp.route('/api/quiz/questions', methods=['GET'])
+def get_quiz_questions():
+    """Return 5 questions for the Voter IQ module."""
+    # We could randomize from a larger bank, but for the demo we return these 5
+    return jsonify({
+        'questions': QUIZ_BANK
+    })

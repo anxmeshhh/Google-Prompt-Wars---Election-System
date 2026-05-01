@@ -19,10 +19,14 @@ def start_battle():
     if not topic:
         return jsonify({'error': 'topic is required'}), 400
 
-    # Placeholder — Module 3 will add real debate generation
+    from agents.debate_moderator import DebateModeratorAgent
+    agent = DebateModeratorAgent()
+    
+    result = agent.generate_debate(topic, persona_a, persona_b)
+
     return jsonify({
         'topic': topic,
         'persona_a': persona_a,
         'persona_b': persona_b,
-        'message': 'Debate engine will be available after Module 3 is deployed.',
+        'battle_data': result
     })

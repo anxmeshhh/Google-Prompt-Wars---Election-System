@@ -11,6 +11,8 @@ import ElectionTimeline from './components/timeline/ElectionTimeline'
 import VoterGuide from './components/guide/VoterGuide'
 import AIAssistant from './components/assistant/AIAssistant'
 import FactCheck from './components/factcheck/FactCheck'
+import PromptBattle from './components/battle/PromptBattle'
+import VoterIQ from './components/quiz/VoterIQ'
 import './index.css'
 
 const API = 'http://localhost:5000'
@@ -201,8 +203,8 @@ function App() {
             {activeTab === 'guide' && <VoterGuide token={token} userRole={user.role} currentPhase={stats?.clock?.phase} stats={stats} />}
             {activeTab === 'assistant' && <AIAssistant token={token} userRole={user.role} stats={stats} />}
             {activeTab === 'factcheck' && <FactCheck token={token} />}
-            {activeTab === 'battle' && <PlaceholderPage title="Prompt Wars Arena" desc="AI vs AI policy debates — coming in Module 7" />}
-            {activeTab === 'quiz' && <PlaceholderPage title="Voter IQ Quiz" desc="Test your election knowledge — coming in Module 7" />}
+            {activeTab === 'battle' && <PromptBattle />}
+            {activeTab === 'quiz' && <VoterIQ />}
             {activeTab === 'liveops' && <LiveDashboard token={token} />}
           </motion.div>
         </AnimatePresence>
