@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { AlertTriangle, Users, MapPin, Search, Play, Pause, RotateCcw, FastForward } from 'lucide-react'
 
-const API = 'http://localhost:5000'
+const API = import.meta.env.PROD ? '' : 'http://localhost:5000'
 
 interface Booth {
   id: string
@@ -260,9 +260,9 @@ export default function LiveDashboard({ token }: { token: string | null }) {
 
 function BoothCard({ booth }: { booth: Booth }) {
   // Determine pressure level based on queue size
-  let pressure = 'low'; let pressureColor = 'var(--color-success)';
-  if (booth.queue_length > 50) { pressure = 'high'; pressureColor = 'var(--color-danger)'; }
-  else if (booth.queue_length > 20) { pressure = 'medium'; pressureColor = 'var(--color-warning)'; }
+  let pressureColor = 'var(--color-success)';
+  if (booth.queue_length > 50) { pressureColor = 'var(--color-danger)'; }
+  else if (booth.queue_length > 20) { pressureColor = 'var(--color-warning)'; }
 
   const evmOk = booth.evm_status === 'operational' || booth.evm_status === 'replaced';
 
