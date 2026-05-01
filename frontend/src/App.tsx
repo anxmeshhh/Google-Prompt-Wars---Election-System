@@ -331,7 +331,7 @@ function AuthPage({ onLogin }: { onLogin: (user: UserData, token: string) => voi
   }
 
   return (
-    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || '855420223700-m7qonpntg4p0i1s3u1fbs52lck69e7t4.apps.googleusercontent.com'}>
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || '896456277671-tbi2jc4cdppnu3blcrbsguesuvmfo0fu.apps.googleusercontent.com'}>
       <div style={{
         minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
         background: 'var(--bg-primary)', padding: 24,

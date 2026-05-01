@@ -19,7 +19,7 @@ logger = logging.getLogger('electaverse.security')
 def create_access_token(user_id: int, role: str) -> str:
     """Generate a short-lived JWT access token."""
     payload = {
-        'sub': user_id,
+        'sub': str(user_id),
         'role': role,
         'type': 'access',
         'iat': datetime.now(timezone.utc),
@@ -33,7 +33,7 @@ def create_access_token(user_id: int, role: str) -> str:
 def create_refresh_token(user_id: int) -> str:
     """Generate a long-lived JWT refresh token."""
     payload = {
-        'sub': user_id,
+        'sub': str(user_id),
         'type': 'refresh',
         'iat': datetime.now(timezone.utc),
         'exp': datetime.now(timezone.utc) + timedelta(
@@ -46,7 +46,13 @@ def create_refresh_token(user_id: int) -> str:
 def verify_token(token: str) -> dict | None:
     """Verify and decode a JWT token. Returns payload or None."""
     try:
-        payload = jwt.decode(token, Config.JWT_SECRET, algorithms=['HS256'])
+        payload = jwt.decode(
+            token, Config.JWT_SECRET, algorithms=['HS256'],
+            options={'verify_sub': False}
+        )
+        # Cast sub back to int for DB lookups
+        if 'sub' in payload:
+            payload['sub'] = int(payload['sub'])
         return payload
     except jwt.ExpiredSignatureError:
         logger.debug('JWT token expired')
