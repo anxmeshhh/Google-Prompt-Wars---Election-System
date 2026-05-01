@@ -41,6 +41,7 @@ from routes.chat_routes import chat_bp, init_app as init_chat_routes
 from routes.battle_routes import battle_bp
 from routes.analytics_routes import analytics_bp, init_app as init_analytics_routes
 from routes.simulation_routes import sim_bp, init_app as init_sim_routes
+from routes.database_routes import db_bp
 
 # Inject engine into routes that need it
 init_booth_routes(engine)
@@ -58,6 +59,7 @@ app.register_blueprint(chat_bp)
 app.register_blueprint(battle_bp)
 app.register_blueprint(analytics_bp)
 app.register_blueprint(sim_bp)
+app.register_blueprint(db_bp)
 
 
 # ── Health Check ──

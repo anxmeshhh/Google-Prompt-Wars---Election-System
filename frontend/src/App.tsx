@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Home, Clock, BookOpen, MessageSquare, ShieldCheck,
-  Swords, Brain, Activity, Wifi, WifiOff,
+  Swords, Brain, Activity, Database, Wifi, WifiOff,
   LogOut, User, Mail, Lock, Eye, EyeOff, ChevronRight
 } from 'lucide-react'
 import { io, Socket } from 'socket.io-client'
@@ -13,6 +13,7 @@ import AIAssistant from './components/assistant/AIAssistant'
 import FactCheck from './components/factcheck/FactCheck'
 import PromptBattle from './components/battle/PromptBattle'
 import VoterIQ from './components/quiz/VoterIQ'
+import DataHub from './components/datahub/DataHub'
 import './index.css'
 
 const API = 'http://localhost:5000'
@@ -27,6 +28,7 @@ const TABS = [
   { id: 'battle', label: 'Prompt Wars', icon: Swords },
   { id: 'quiz', label: 'Voter IQ', icon: Brain },
   { id: 'liveops', label: 'Live Ops', icon: Activity },
+  { id: 'database', label: 'Data Hub', icon: Database },
 ] as const
 
 type TabId = typeof TABS[number]['id']
@@ -206,6 +208,7 @@ function App() {
             {activeTab === 'battle' && <PromptBattle />}
             {activeTab === 'quiz' && <VoterIQ />}
             {activeTab === 'liveops' && <LiveDashboard token={token} />}
+            {activeTab === 'database' && <DataHub />}
           </motion.div>
         </AnimatePresence>
       </main>

@@ -26,6 +26,7 @@ interface Incident {
   status: string
   description: string
   reported_at: string
+  ai_recommendation?: string
 }
 
 export default function LiveDashboard({ token }: { token: string | null }) {
@@ -154,6 +155,32 @@ export default function LiveDashboard({ token }: { token: string | null }) {
         </div>
       </div>
 
+      {/* EXECUTIVE KPI ROW */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
+        <div className="glass" style={{ padding: 20, borderRadius: 'var(--radius-md)', borderLeft: '4px solid var(--color-primary)' }}>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Total Polling Stations</div>
+          <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-primary)' }}>{booths.length}</div>
+        </div>
+        <div className="glass" style={{ padding: 20, borderRadius: 'var(--radius-md)', borderLeft: '4px solid var(--color-accent)' }}>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Average Turnout</div>
+          <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-primary)' }}>
+            {booths.length > 0 ? Math.round(booths.reduce((acc, b) => acc + (b.total_votes_cast / Math.max(b.registered_voters, 1)), 0) / booths.length * 100) : 0}%
+          </div>
+        </div>
+        <div className="glass" style={{ padding: 20, borderRadius: 'var(--radius-md)', borderLeft: '4px solid var(--color-danger)' }}>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Critical Incidents</div>
+          <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--color-danger)' }}>
+            {incidents.filter(i => (i.status === 'open' || i.status === 'triaging') && i.severity === 'critical').length}
+          </div>
+        </div>
+        <div className="glass" style={{ padding: 20, borderRadius: 'var(--radius-md)', borderLeft: '4px solid var(--color-success)' }}>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Total Votes Cast</div>
+          <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-primary)' }}>
+            {booths.reduce((acc, b) => acc + b.total_votes_cast, 0).toLocaleString()}
+          </div>
+        </div>
+      </div>
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 24 }}>
         
         {/* Left Column: Booths Grid */}
@@ -163,7 +190,8 @@ export default function LiveDashboard({ token }: { token: string | null }) {
           </h3>
           
           <div style={{ 
-            display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 
+            display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16,
+            maxHeight: 'calc(100vh - 380px)', overflowY: 'auto', paddingRight: 8, paddingBottom: 16, alignContent: 'start'
           }}>
             {filteredBooths.map((booth) => (
               <BoothCard key={booth.id} booth={booth} />
@@ -180,7 +208,7 @@ export default function LiveDashboard({ token }: { token: string | null }) {
             )}
           </h3>
           
-          <div className="glass" style={{ padding: 16, maxHeight: 'calc(100vh - 250px)', overflowY: 'auto' }}>
+          <div className="glass" style={{ padding: 16, maxHeight: 'calc(100vh - 380px)', overflowY: 'auto' }}>
             {activeIncidents.length === 0 ? (
               <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 20 }}>No active incidents.</p>
             ) : (
@@ -252,16 +280,27 @@ function BoothCard({ booth }: { booth: Booth }) {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <div style={{ background: 'var(--bg-secondary)', padding: 10, borderRadius: 'var(--radius-sm)' }}>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 2 }}>Queue</div>
-          <div style={{ fontSize: 20, fontWeight: 700, color: pressureColor, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Users size={16} /> {booth.queue_length}
+        <div style={{ background: 'var(--bg-secondary)', padding: 12, borderRadius: 'var(--radius-sm)' }}>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Queue Pressure</div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: pressureColor, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+            <Users size={18} /> {booth.queue_length}
+          </div>
+          {/* Progress Bar */}
+          <div style={{ width: '100%', height: 4, background: 'rgba(255,255,255,0.1)', borderRadius: 2, overflow: 'hidden' }}>
+            <motion.div 
+              initial={{ width: 0 }}
+              animate={{ width: `${Math.min(100, (booth.queue_length / 100) * 100)}%` }}
+              style={{ height: '100%', background: pressureColor, transition: 'width 0.3s ease' }}
+            />
           </div>
         </div>
-        <div style={{ background: 'var(--bg-secondary)', padding: 10, borderRadius: 'var(--radius-sm)' }}>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 2 }}>Turnout</div>
-          <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>
+        <div style={{ background: 'var(--bg-secondary)', padding: 12, borderRadius: 'var(--radius-sm)' }}>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Turnout</div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)' }}>
             {Math.round((booth.total_votes_cast / Math.max(booth.registered_voters, 1)) * 100)}%
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8 }}>
+            {booth.total_votes_cast} / {booth.registered_voters}
           </div>
         </div>
       </div>
