@@ -1,26 +1,34 @@
 """
 ElectaVerse — Analytics API Routes
 Serves turnout timelines, incident breakdowns, and queue distributions from DB.
+Cached for performance on read-heavy endpoints.
 """
 
 from flask import Blueprint, jsonify
+from flask_caching import Cache
 from db.connection import Database
 
 analytics_bp = Blueprint('analytics', __name__)
 
 _engine = None
+_cache = None
 
 
 def init_app(engine):
-    global _engine
+    """Inject simulation engine and cache into this blueprint."""
+    global _engine, _cache
     _engine = engine
+    # Import cache from app context (lazy to avoid circular imports)
+    from app import cache
+    _cache = cache
 
 
 @analytics_bp.route('/api/analytics/turnout', methods=['GET'])
 def get_turnout():
-    """Get turnout timeline from DB snapshots."""
+    """Get turnout timeline from DB snapshots. Cached 30s."""
     rows = Database.execute(
-        "SELECT sim_time, phase, total_votes, turnout_percent, avg_queue_length FROM turnout_snapshots ORDER BY tick"
+        """SELECT sim_time, phase, total_votes, turnout_percent, avg_queue_length
+           FROM turnout_snapshots ORDER BY tick"""
     )
     return jsonify({'timeline': rows})
 

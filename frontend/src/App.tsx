@@ -133,8 +133,11 @@ function App() {
   // ── Logged in → show main app ──
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      {/* Skip Navigation for Accessibility */}
+      <a href="#main-content" className="skip-nav">Skip to main content</a>
+
       {/* Navbar */}
-      <nav style={{
+      <nav aria-label="Main navigation" style={{
         position: 'sticky', top: 0, zIndex: 100,
         background: 'rgba(8, 12, 24, 0.85)', backdropFilter: 'blur(20px)',
         borderBottom: '1px solid var(--border)', padding: '12px 24px',
@@ -210,11 +213,16 @@ function App() {
           </div>
         </div>
         <div style={{ maxWidth: 1200, margin: '10px auto 0' }}>
-          <div className="nav-tabs">
+          <div className="nav-tabs" role="tablist" aria-label="Application sections">
             {TABS.map(tab => (
-              <button key={tab.id} className={`nav-tab ${activeTab === tab.id ? 'active' : ''}`}
+              <button key={tab.id}
+                role="tab"
+                aria-selected={activeTab === tab.id}
+                aria-controls={`panel-${tab.id}`}
+                id={`tab-${tab.id}`}
+                className={`nav-tab ${activeTab === tab.id ? 'active' : ''}`}
                 onClick={() => setActiveTab(tab.id)}>
-                <tab.icon size={14} style={{ marginRight: 4, verticalAlign: -2 }} />{tab.label}
+                <tab.icon size={14} aria-hidden="true" style={{ marginRight: 4, verticalAlign: -2 }} />{tab.label}
               </button>
             ))}
           </div>
@@ -222,10 +230,17 @@ function App() {
       </nav>
 
       {/* Main Content */}
-      <main style={{ flex: 1 }}>
+      <main id="main-content" role="main" aria-label="Main content" style={{ flex: 1 }}>
         <AnimatePresence mode="wait">
-          <motion.div key={activeTab} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }}>
+          <motion.div
+            key={activeTab}
+            role="tabpanel"
+            id={`panel-${activeTab}`}
+            aria-labelledby={`tab-${activeTab}`}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.25 }}>
             {activeTab === 'home' && <HomePage stats={stats} user={user} />}
             {activeTab === 'timeline' && <ElectionTimeline token={token} userRole={user.role} currentPhase={stats?.clock?.phase} stats={stats} />}
             {activeTab === 'guide' && <VoterGuide token={token} userRole={user.role} currentPhase={stats?.clock?.phase} stats={stats} />}
@@ -458,8 +473,8 @@ function AuthPage({ onLogin }: { onLogin: (user: UserData, token: string) => voi
 
 
 // ── Input Field ──
-function InputField({ icon, type, placeholder, value, onChange }: {
-  icon: React.ReactNode; type: string; placeholder: string; value: string; onChange: (v: string) => void
+function InputField({ icon, type, placeholder, value, onChange, id }: {
+  icon: React.ReactNode; type: string; placeholder: string; value: string; onChange: (v: string) => void; id?: string
 }) {
   return (
     <div style={{
@@ -468,8 +483,9 @@ function InputField({ icon, type, placeholder, value, onChange }: {
       background: 'var(--bg-surface)', border: '1px solid var(--border)',
       transition: 'border-color 0.2s',
     }}>
-      <span style={{ color: 'var(--text-muted)', display: 'flex' }}>{icon}</span>
+      <span style={{ color: 'var(--text-muted)', display: 'flex' }} aria-hidden="true">{icon}</span>
       <input type={type} placeholder={placeholder} value={value}
+        id={id} aria-label={placeholder}
         onChange={e => onChange(e.target.value)} required
         style={{
           flex: 1, background: 'none', border: 'none', outline: 'none',

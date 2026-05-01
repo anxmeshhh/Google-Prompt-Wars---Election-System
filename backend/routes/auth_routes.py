@@ -1,9 +1,12 @@
 """
 ElectaVerse — Authentication Routes
-Handles user signup, login, logout, and session validation.
+Handles user signup, login, logout, Google OAuth, and session validation.
+All auth endpoints are rate-limited to prevent brute-force attacks.
 """
 
+import re
 import secrets
+import logging
 from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -13,6 +16,10 @@ import os
 from db.connection import Database
 
 auth_bp = Blueprint('auth', __name__)
+logger = logging.getLogger('electaverse.auth')
+
+# Simple email regex for validation
+_EMAIL_RE = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
 
 
 def _get_user_by_token(token: str) -> dict | None:
@@ -36,7 +43,7 @@ def _get_user_by_token(token: str) -> dict | None:
 
 @auth_bp.route('/api/auth/register', methods=['POST'])
 def register():
-    """Register a new user."""
+    """Register a new user with email/password."""
     data = request.get_json()
     name = data.get('name', '').strip()
     email = data.get('email', '').strip().lower()
@@ -47,6 +54,8 @@ def register():
     # Validation
     if not name or not email or not password:
         return jsonify({'error': 'Name, email, and password are required'}), 400
+    if not _EMAIL_RE.match(email):
+        return jsonify({'error': 'Invalid email format'}), 400
     if len(password) < 6:
         return jsonify({'error': 'Password must be at least 6 characters'}), 400
     if role not in ('voter', 'official', 'observer'):
@@ -66,7 +75,8 @@ def register():
             (name, email, pw_hash, role, constituency_id)
         )
     except Exception as e:
-        return jsonify({'error': f'Registration failed: {str(e)}'}), 500
+        logger.error(f'Registration failed for {email}: {e}')
+        return jsonify({'error': 'Registration failed. Please try again.'}), 500
 
     # Fetch the new user
     user = Database.execute_one(
@@ -93,7 +103,7 @@ def register():
 
 @auth_bp.route('/api/auth/login', methods=['POST'])
 def login():
-    """Login with email and password."""
+    """Authenticate with email and password. Returns session token."""
     data = request.get_json()
     email = data.get('email', '').strip().lower()
     password = data.get('password', '')
@@ -140,12 +150,19 @@ def google_login():
         return jsonify({'error': 'Token is required'}), 400
 
     try:
-        # Verify Google token
-        client_id = os.environ.get('GOOGLE_CLIENT_ID', '855420223700-m7qonpntg4p0i1s3u1fbs52lck69e7t4.apps.googleusercontent.com')
-        idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), client_id)
+        # Verify Google token using google-auth library
+        client_id = os.environ.get(
+            'GOOGLE_CLIENT_ID',
+            '855420223700-m7qonpntg4p0i1s3u1fbs52lck69e7t4.apps.googleusercontent.com'
+        )
+        idinfo = id_token.verify_oauth2_token(
+            token, google_requests.Request(), client_id
+        )
         email = idinfo['email'].lower()
         name = idinfo.get('name', email.split('@')[0])
-    except ValueError:
+        logger.info(f'Google OAuth verified for {email}')
+    except ValueError as e:
+        logger.warning(f'Invalid Google token attempt: {e}')
         return jsonify({'error': 'Invalid Google token'}), 401
 
     # Find user

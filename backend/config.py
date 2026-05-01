@@ -16,10 +16,11 @@ class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', 'electaverse-secret-key-dev')
     GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
     GROQ_API_KEY = os.getenv('GROQ_API_KEY', '')
+    GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '')
     CORS_ORIGINS = os.getenv('CORS_ORIGINS', 'http://localhost:5173').split(',')
 
-    # MySQL
+    # MySQL — credentials loaded from environment, never hardcoded
     DB_HOST = os.getenv('DB_HOST', 'localhost')
     DB_USER = os.getenv('DB_USER', 'root')
-    DB_PASSWORD = os.getenv('DB_PASSWORD', 'theanimesh2005')
+    DB_PASSWORD = os.getenv('DB_PASSWORD', '')
     DB_NAME = os.getenv('DB_NAME', 'electaverse')

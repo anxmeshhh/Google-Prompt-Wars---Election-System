@@ -5,9 +5,18 @@ Initializes Flask, SocketIO, database, simulation engine, and all API routes.
 
 import sys
 import os
+import logging
 
 # Ensure backend directory is in path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+# ── Structured Logging ──
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+)
+logger = logging.getLogger('electaverse')
 
 from flask import Flask, jsonify
 from flask_cors import CORS
@@ -92,12 +101,27 @@ app.register_blueprint(db_bp)
 @limiter.exempt
 @cache.cached(timeout=10)
 def health():
+    """Return system health status including simulation and booth count."""
     return jsonify({
         'status': 'running',
         'simulation': 'active' if engine.running else 'stopped',
         'booths': len(engine.booths),
         'clock': engine.clock.to_dict() if engine.clock else None,
     })
+
+
+# ── Global Error Handlers ──
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    """Return JSON on rate limit exceeded instead of HTML."""
+    return jsonify({'error': 'Rate limit exceeded. Please slow down.'}), 429
+
+
+@app.errorhandler(500)
+def internal_error(e):
+    """Catch unhandled exceptions and return safe JSON."""
+    logger.exception('Unhandled server error')
+    return jsonify({'error': 'Internal server error'}), 500
 
 
 # ── SocketIO Events ──
@@ -121,11 +145,11 @@ def start_simulation_on_first_connect():
 
 # ── Entry Point ──
 if __name__ == '__main__':
-    print("\n🗳️  ElectaVerse Backend Starting...")
-    print(f"   Booths loaded: {len(engine.booths)}")
-    print(f"   Simulation tick: every {engine.tick_interval}s")
-    print(f"   API: http://localhost:5000")
-    print(f"   WebSocket: ws://localhost:5000\n")
+    logger.info('🗳️  ElectaVerse Backend Starting...')
+    logger.info(f'   Booths loaded: {len(engine.booths)}')
+    logger.info(f'   Simulation tick: every {engine.tick_interval}s')
+    logger.info(f'   API: http://localhost:5000')
+    logger.info(f'   WebSocket: ws://localhost:5000')
 
     engine.start()
     socketio.run(app, host='0.0.0.0', port=5000, debug=False, allow_unsafe_werkzeug=True)
