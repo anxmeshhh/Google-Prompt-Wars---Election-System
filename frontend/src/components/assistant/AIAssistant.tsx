@@ -132,7 +132,7 @@ export default function AIAssistant({ token, userRole, stats }: Props) {
           <Bot size={24} style={{ color: 'var(--color-primary)' }} /> AI Election Assistant
         </h2>
         <p style={{ color: 'var(--text-muted)', fontSize: 14, maxWidth: 600, margin: '0 auto' }}>
-          Not a chatbot — a <strong style={{ color: 'var(--color-primary-light)' }}>multi-agent system</strong> with 
+          Not a chatbot — a <strong style={{ color: 'var(--color-primary-light)' }}>multi-agent system</strong> with
           real-time election data. Every answer is grounded in live simulation state.
         </p>
 
@@ -181,7 +181,7 @@ export default function AIAssistant({ token, userRole, stats }: Props) {
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20 }}>
               <div style={{ fontSize: 48, opacity: 0.3 }}>🤖</div>
               <p style={{ color: 'var(--text-muted)', fontSize: 14, textAlign: 'center', maxWidth: 400 }}>
-                Ask me anything about the election. I have access to <strong>real-time simulation data</strong> and 
+                Ask me anything about the election. I have access to <strong>real-time simulation data</strong> and
                 will automatically route your question to the best specialist agent.
               </p>
               <div style={{

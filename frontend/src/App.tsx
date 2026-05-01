@@ -89,7 +89,7 @@ function App() {
       fetch(`${API}/api/auth/logout`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
-      }).catch(() => {})
+      }).catch(() => { })
     }
     localStorage.removeItem('electaverse_token')
     setToken(null)
