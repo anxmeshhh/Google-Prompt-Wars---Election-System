@@ -5,6 +5,7 @@ Wrapper around Google's Generative AI SDK with sync and streaming support.
 
 import google.generativeai as genai
 from config import Config
+from groq import Groq
 
 
 class GeminiService:
@@ -15,6 +16,10 @@ class GeminiService:
         self.model_name = 'gemini-2.5-flash'
         self._configured = False
         self._configure()
+        
+        self.groq_api_key = Config.GROQ_API_KEY
+        self.groq_client = Groq(api_key=self.groq_api_key) if self.groq_api_key else None
+        self.groq_model = "llama3-8b-8192"
 
     def _configure(self):
         """Configure the Gemini SDK."""
@@ -42,6 +47,19 @@ class GeminiService:
             response = model.generate_content(prompt)
             return response.text
         except Exception as e:
+            if self.groq_client:
+                print(f"Gemini failed, falling back to Groq: {e}")
+                try:
+                    completion = self.groq_client.chat.completions.create(
+                        model=self.groq_model,
+                        messages=[
+                            {"role": "system", "content": system_instruction or "You are a helpful assistant."},
+                            {"role": "user", "content": prompt}
+                        ]
+                    )
+                    return completion.choices[0].message.content
+                except Exception as groq_e:
+                    return f"AI service temporarily unavailable. Groq Error: {str(groq_e)}"
             return f"AI service temporarily unavailable. Error: {str(e)}"
 
     def generate_json(self, prompt: str, system_instruction: str = '') -> str:
@@ -66,6 +84,25 @@ class GeminiService:
                     raw = raw[:-3].strip()
             return raw
         except Exception as e:
+            if self.groq_client:
+                print(f"Gemini failed, falling back to Groq JSON: {e}")
+                try:
+                    # Groq strictly requires the word JSON in the prompt for json_object format.
+                    # All our agents already have this, but we append to system_instruction to be perfectly safe.
+                    sys_msg = (system_instruction or "You are a helpful assistant.") + " Output strictly in JSON format."
+                    completion = self.groq_client.chat.completions.create(
+                        model=self.groq_model,
+                        messages=[
+                            {"role": "system", "content": sys_msg},
+                            {"role": "user", "content": prompt}
+                        ],
+                        response_format={"type": "json_object"}
+                    )
+                    return completion.choices[0].message.content
+                except Exception as groq_e:
+                    import json
+                    return json.dumps({"error": f"Groq fallback failed: {str(groq_e)}"})
+
             import json
             return json.dumps({"error": str(e)})
 
