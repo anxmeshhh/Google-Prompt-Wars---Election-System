@@ -6,6 +6,7 @@ import {
   LogOut, User, Mail, Lock, Eye, EyeOff, ChevronRight
 } from 'lucide-react'
 import { io, Socket } from 'socket.io-client'
+import LiveDashboard from './components/liveops/LiveDashboard'
 import './index.css'
 
 const API = 'http://localhost:5000'
@@ -198,7 +199,7 @@ function App() {
             {activeTab === 'factcheck' && <PlaceholderPage title="Fact Checker" desc="AI-powered claim verification — coming in Module 6" />}
             {activeTab === 'battle' && <PlaceholderPage title="Prompt Wars Arena" desc="AI vs AI policy debates — coming in Module 7" />}
             {activeTab === 'quiz' && <PlaceholderPage title="Voter IQ Quiz" desc="Test your election knowledge — coming in Module 7" />}
-            {activeTab === 'liveops' && <PlaceholderPage title="Live Operations" desc="Real-time booth monitoring — coming in Module 8" />}
+            {activeTab === 'liveops' && <LiveDashboard token={token} />}
           </motion.div>
         </AnimatePresence>
       </main>

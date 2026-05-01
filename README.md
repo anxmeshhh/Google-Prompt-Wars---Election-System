@@ -91,6 +91,16 @@ ElectaVerse uses a **three-layer hybrid architecture** — the same pattern used
 └─────────────────────────────────────────────────────────────┘
 ```
 
+### 🧩 How It Works (Simple Step-by-Step)
+
+If you are wondering exactly how data flows through ElectaVerse, here is the simple version:
+
+1. **The Heartbeat (Simulation Engine)**: Inside the backend, a clock ticks every 3 seconds. Every tick, it uses math (Poisson distribution) to decide how many people arrive at a booth and how many vote. It also randomly generates "incidents" like a broken EVM machine or a power outage.
+2. **The Memory (MySQL Database)**: All this data isn't just floating in the air. Every config setting (like how fast people vote) and every incident is saved into a MySQL database. This means if the server crashes, your election data is safe.
+3. **The Broadcast (WebSockets)**: The backend takes the latest booth queues and incidents and blasts them out to the frontend using WebSockets (Socket.IO). This is why the dashboard updates in real-time without you ever clicking "refresh".
+4. **The Face (React Frontend)**: The frontend (built with React and Vite) catches these WebSocket broadcasts. It updates the live counters, colors the booths red if the queue is too long, and shows a scrolling feed of incidents.
+5. **The Brain (AI Agents)**: When a user asks a question, requests a fact-check, or triggers a Prompt Wars debate, the frontend sends a REST API request to the backend. The backend routes it to one of **5 specialized Google Gemini AI agents**. The agent thinks, formats the answer nicely, and sends it back to the user.
+
 ### The 8 Solution Modules
 
 | # | Module | Problem It Solves | How |
