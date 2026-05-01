@@ -45,14 +45,25 @@ def report_incident():
 
 @incident_bp.route('/api/incidents/<incident_id>/triage', methods=['POST'])
 def triage_incident(incident_id):
-    """Trigger AI triage on an incident (Module 3 will add actual AI)."""
+    """Trigger AI triage on an incident."""
     inc = _engine.get_incident(incident_id)
     if not inc:
         return jsonify({'error': 'Incident not found'}), 404
 
-    # Placeholder — Module 3 will wire the Incident Responder agent
+    booth = _engine.get_booth(inc.booth_id)
+    
+    from agents.incident_responder import IncidentResponderAgent
+    agent = IncidentResponderAgent()
+    triage_result = agent.triage_incident(inc.to_dict(), booth)
+    
+    # Update incident with AI recommendations
     inc.status = 'triaging'
+    inc.ai_recommendation = triage_result.get('analysis')
+    
+    # In a real app, we'd save this to DB here. For now, it lives in memory.
+    
     return jsonify({
         'incident': inc.to_dict(),
-        'message': 'AI triage will be available after Module 3 (Agents) is complete.',
+        'triage': triage_result,
+        'message': 'AI triage completed successfully.',
     })

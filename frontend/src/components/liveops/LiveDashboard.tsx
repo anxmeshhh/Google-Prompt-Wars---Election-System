@@ -145,11 +145,26 @@ export default function LiveDashboard({ token }: { token: string | null }) {
                       <span style={{ fontSize: 12, fontWeight: 600, color: getSeverityColor(inc.severity) }}>
                         {inc.incident_type.replace(/_/g, ' ')}
                       </span>
-                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                        {new Date(inc.reported_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        {inc.status === 'triaging' && (
+                          <span className="badge badge-info" style={{ fontSize: 9, padding: '2px 4px' }}>AI TRIAGING</span>
+                        )}
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                          {new Date(inc.reported_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
                     </div>
                     <p style={{ fontSize: 13, marginBottom: 6, lineHeight: 1.4 }}>{inc.description}</p>
+                    {inc.ai_recommendation && (
+                      <div style={{ 
+                        marginTop: 8, marginBottom: 8, padding: 8, 
+                        background: 'rgba(99,102,241,0.1)', borderRadius: 4, 
+                        borderLeft: '2px solid var(--color-primary)' 
+                      }}>
+                        <div style={{ fontSize: 10, color: 'var(--color-primary-light)', fontWeight: 600, marginBottom: 2 }}>🤖 AI RECOMMENDATION</div>
+                        <p style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4, margin: 0 }}>{inc.ai_recommendation}</p>
+                      </div>
+                    )}
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', gap: 4, alignItems: 'center' }}>
                       <MapPin size={10} /> {inc.booth_name} ({inc.constituency})
                     </div>

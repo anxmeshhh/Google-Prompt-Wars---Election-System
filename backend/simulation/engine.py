@@ -107,11 +107,48 @@ class SimulationEngine:
         self.running = False
 
     def _run_loop(self):
+        last_sweep_tick = 0
         while self.running and not self.clock.day_complete:
             self._tick()
+            
+            # Proactive AI sweep every 10 ticks (~30 seconds)
+            if self.clock.total_ticks - last_sweep_tick >= 10:
+                self._proactive_ai_sweep()
+                last_sweep_tick = self.clock.total_ticks
+                
             if self.socketio:
                 self._emit_updates()
             time.sleep(self.tick_interval)
+
+    def _proactive_ai_sweep(self):
+        """Automatically triage open critical/high incidents."""
+        open_criticals = [i for i in self.incidents if i.status == 'open' and i.severity in ('critical', 'high')]
+        if not open_criticals:
+            return
+            
+        from agents.incident_responder import IncidentResponderAgent
+        agent = IncidentResponderAgent()
+        
+        for inc in open_criticals[:3]: # Triage up to 3 at a time to avoid rate limits
+            booth = next((b for b in self.booths if b.id == inc.booth_id), None)
+            if booth:
+                triage_result = agent.triage_incident(inc.to_dict(), booth.to_dict())
+                inc.status = 'triaging'
+                inc.ai_recommendation = triage_result.get('analysis', 'Automatic triage complete.')
+                try:
+                    Database.execute_write(
+                        "UPDATE incidents SET status='triaging', ai_recommendation=%s WHERE id=%s",
+                        (inc.ai_recommendation, inc.id)
+                    )
+                except:
+                    pass
+                if self.socketio:
+                    self.socketio.emit('agent_action', {
+                        'agent': 'IncidentResponder',
+                        'action': 'Auto-Triage',
+                        'incident_id': inc.id,
+                        'result': triage_result
+                    })
 
     def _tick(self):
         """Execute one simulation tick."""
