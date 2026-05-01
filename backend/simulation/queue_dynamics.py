@@ -1,11 +1,11 @@
 """
 ElectaVerse — Queue Dynamics Engine
 Models voter arrivals and departures using Poisson process.
+All parameters are injected — nothing hardcoded.
 """
 
 import random
 import math
-from config import SimulationConfig
 
 
 class QueueDynamics:
@@ -16,7 +16,6 @@ class QueueDynamics:
         """Generate a Poisson-distributed random number."""
         if lam <= 0:
             return 0
-        # Knuth's algorithm for small lambda
         L = math.exp(-lam)
         k = 0
         p = 1.0
@@ -26,74 +25,47 @@ class QueueDynamics:
         return k - 1
 
     @staticmethod
-    def compute_arrivals(time_multiplier: float, booth_variance: float = 0.0) -> int:
-        """
-        Compute voter arrivals for this tick using Poisson distribution.
-        
-        Args:
-            time_multiplier: Time-of-day multiplier for arrival rate
-            booth_variance: Per-booth random variance (-1 to 1)
-        """
-        # Scale base rate by tick duration
-        minutes_per_tick = SimulationConfig.SIMULATED_MINUTES_PER_TICK
-        base_rate_per_minute = SimulationConfig.BASE_ARRIVAL_RATE / 10  # rate per minute
-        
-        lam = base_rate_per_minute * minutes_per_tick * time_multiplier * (1 + booth_variance * 0.3)
+    def compute_arrivals(base_rate: float, minutes_per_tick: int, time_multiplier: float) -> int:
+        """Compute voter arrivals for this tick using Poisson distribution."""
+        base_rate_per_minute = base_rate / 10
+        lam = base_rate_per_minute * minutes_per_tick * time_multiplier
+        lam *= random.uniform(0.7, 1.3)
         lam = max(0, lam)
-        
         return QueueDynamics.poisson_sample(lam)
 
     @staticmethod
-    def compute_departures(queue_length: int, throughput_rate: float) -> int:
-        """
-        Compute how many voters are processed (leave queue) this tick.
-        
-        Args:
-            queue_length: Current queue length
-            throughput_rate: Booth's throughput in voters/hour
-        """
+    def compute_departures(queue_length: int, throughput_rate: float, minutes_per_tick: int) -> int:
+        """Compute how many voters are processed this tick."""
         if queue_length == 0:
             return 0
-
-        minutes_per_tick = SimulationConfig.SIMULATED_MINUTES_PER_TICK
         voters_per_minute = throughput_rate / 60
-        
-        # Add some variance to processing speed
         variance = random.uniform(0.8, 1.2)
-        expected_departures = voters_per_minute * minutes_per_tick * variance
-        
-        # Can't depart more than queue length
-        departures = min(queue_length, max(0, int(round(expected_departures))))
-        return departures
+        expected = voters_per_minute * minutes_per_tick * variance
+        return min(queue_length, max(0, int(round(expected))))
 
     @staticmethod
     def update_queue(
         queue_length: int,
         throughput_rate: float,
+        base_arrival_rate: float,
+        minutes_per_tick: int,
         time_multiplier: float,
         is_polling_active: bool,
         evm_status: str = 'operational'
     ) -> tuple:
-        """
-        Update queue for one tick. Returns (new_queue_length, arrivals, departures).
-        """
+        """Update queue for one tick. Returns (new_queue, arrivals, departures)."""
         if not is_polling_active:
-            # During non-polling hours, queue drains but no new arrivals
-            departures = QueueDynamics.compute_departures(queue_length, throughput_rate)
+            departures = QueueDynamics.compute_departures(queue_length, throughput_rate, minutes_per_tick)
             return (max(0, queue_length - departures), 0, departures)
 
-        # Compute arrivals
-        booth_variance = random.uniform(-1, 1)
-        arrivals = QueueDynamics.compute_arrivals(time_multiplier, booth_variance)
+        arrivals = QueueDynamics.compute_arrivals(base_arrival_rate, minutes_per_tick, time_multiplier)
 
-        # Compute departures (reduced if EVM is faulty)
         effective_throughput = throughput_rate
         if evm_status == 'faulty':
-            effective_throughput = 0  # Booth halted
+            effective_throughput = 0
         elif evm_status == 'replaced':
-            effective_throughput = throughput_rate * 0.7  # Slower after replacement
+            effective_throughput = throughput_rate * 0.7
 
-        departures = QueueDynamics.compute_departures(queue_length, effective_throughput)
-
+        departures = QueueDynamics.compute_departures(queue_length, effective_throughput, minutes_per_tick)
         new_queue = max(0, queue_length + arrivals - departures)
         return (new_queue, arrivals, departures)

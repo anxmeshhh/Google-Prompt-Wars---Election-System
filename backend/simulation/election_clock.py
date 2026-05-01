@@ -1,16 +1,18 @@
 """
 ElectaVerse — Election Clock
 Manages simulated election day time progression.
+All parameters loaded from database.
 """
-
-from config import SimulationConfig
 
 
 class ElectionClock:
     """Simulates election day time progression."""
 
-    def __init__(self):
-        self.current_hour = SimulationConfig.ELECTION_START_HOUR
+    def __init__(self, start_hour: int = 7, end_hour: int = 18, minutes_per_tick: int = 2):
+        self.start_hour = start_hour
+        self.end_hour = end_hour
+        self.minutes_per_tick = minutes_per_tick
+        self.current_hour = start_hour
         self.current_minute = 0
         self.total_ticks = 0
         self.phase = 'PRE_POLL'
@@ -23,7 +25,7 @@ class ElectionClock:
             return
 
         self.total_ticks += 1
-        self.current_minute += SimulationConfig.SIMULATED_MINUTES_PER_TICK
+        self.current_minute += self.minutes_per_tick
 
         while self.current_minute >= 60:
             self.current_minute -= 60
@@ -33,13 +35,13 @@ class ElectionClock:
 
     def _update_phase(self):
         """Update the election phase based on current time."""
-        if self.current_hour < SimulationConfig.ELECTION_START_HOUR:
+        if self.current_hour < self.start_hour:
             self.phase = 'PRE_POLL'
             self.is_polling_active = False
-        elif self.current_hour < SimulationConfig.ELECTION_END_HOUR:
+        elif self.current_hour < self.end_hour:
             self.phase = 'ACTIVE_POLLING'
             self.is_polling_active = True
-        elif self.current_hour < SimulationConfig.ELECTION_END_HOUR + 2:
+        elif self.current_hour < self.end_hour + 2:
             self.phase = 'POST_POLL'
             self.is_polling_active = False
         else:
@@ -55,12 +57,10 @@ class ElectionClock:
             display_hour = 12
         return f'{display_hour}:{self.current_minute:02d} {period}'
 
-    def get_arrival_multiplier(self) -> float:
-        """Get the time-of-day arrival rate multiplier."""
-        return SimulationConfig.PEAK_MULTIPLIERS.get(self.current_hour, 1.0)
-
     def to_dict(self) -> dict:
         """Serialize clock state."""
+        total_minutes = (self.end_hour - self.start_hour) * 60
+        elapsed = (self.current_hour - self.start_hour) * 60 + self.current_minute
         return {
             'current_hour': self.current_hour,
             'current_minute': self.current_minute,
@@ -69,8 +69,5 @@ class ElectionClock:
             'is_polling_active': self.is_polling_active,
             'day_complete': self.day_complete,
             'total_ticks': self.total_ticks,
-            'progress_percent': min(100, round(
-                ((self.current_hour - SimulationConfig.ELECTION_START_HOUR) * 60 + self.current_minute) /
-                ((SimulationConfig.ELECTION_END_HOUR - SimulationConfig.ELECTION_START_HOUR) * 60) * 100, 1
-            )),
+            'progress_percent': min(100, round(elapsed / max(total_minutes, 1) * 100, 1)),
         }
