@@ -7,6 +7,8 @@ import {
 } from 'lucide-react'
 import { io, Socket } from 'socket.io-client'
 import LiveDashboard from './components/liveops/LiveDashboard'
+import ElectionTimeline from './components/timeline/ElectionTimeline'
+import VoterGuide from './components/guide/VoterGuide'
 import './index.css'
 
 const API = 'http://localhost:5000'
@@ -193,8 +195,8 @@ function App() {
           <motion.div key={activeTab} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }}>
             {activeTab === 'home' && <HomePage stats={stats} user={user} />}
-            {activeTab === 'timeline' && <PlaceholderPage title="Election Timeline" desc="Interactive election phase timeline — coming in Module 5" />}
-            {activeTab === 'guide' && <PlaceholderPage title="Voter Guide" desc="Step-by-step voting guide — coming in Module 5" />}
+            {activeTab === 'timeline' && <ElectionTimeline token={token} userRole={user.role} currentPhase={stats?.clock?.phase} />}
+            {activeTab === 'guide' && <VoterGuide token={token} userRole={user.role} currentPhase={stats?.clock?.phase} />}
             {activeTab === 'assistant' && <PlaceholderPage title="AI Assistant" desc="Multi-agent AI chat — coming in Module 6" />}
             {activeTab === 'factcheck' && <PlaceholderPage title="Fact Checker" desc="AI-powered claim verification — coming in Module 6" />}
             {activeTab === 'battle' && <PlaceholderPage title="Prompt Wars Arena" desc="AI vs AI policy debates — coming in Module 7" />}

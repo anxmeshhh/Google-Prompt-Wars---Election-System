@@ -127,28 +127,31 @@ class SimulationEngine:
             return
             
         from agents.incident_responder import IncidentResponderAgent
+        import json as _json
         agent = IncidentResponderAgent()
         
-        for inc in open_criticals[:3]: # Triage up to 3 at a time to avoid rate limits
+        for inc in open_criticals[:3]:
             booth = next((b for b in self.booths if b.id == inc.booth_id), None)
             if booth:
-                triage_result = agent.triage_incident(inc.to_dict(), booth.to_dict())
-                inc.status = 'triaging'
-                inc.ai_recommendation = triage_result.get('analysis', 'Automatic triage complete.')
                 try:
+                    raw = agent.triage_incident(inc.to_dict(), booth.to_dict())
+                    # generate_json returns a string — parse it
+                    triage_result = _json.loads(raw) if isinstance(raw, str) else raw
+                    inc.status = 'triaging'
+                    inc.ai_recommendation = triage_result.get('analysis', 'Automatic triage complete.')
                     Database.execute_write(
                         "UPDATE incidents SET status='triaging', ai_recommendation=%s WHERE id=%s",
                         (inc.ai_recommendation, inc.id)
                     )
-                except:
-                    pass
-                if self.socketio:
-                    self.socketio.emit('agent_action', {
-                        'agent': 'IncidentResponder',
-                        'action': 'Auto-Triage',
-                        'incident_id': inc.id,
-                        'result': triage_result
-                    })
+                    if self.socketio:
+                        self.socketio.emit('agent_action', {
+                            'agent': 'IncidentResponder',
+                            'action': 'Auto-Triage',
+                            'incident_id': inc.id,
+                            'result': triage_result
+                        })
+                except Exception as e:
+                    print(f"[AI Sweep] Error triaging {inc.id}: {e}")
 
     def _tick(self):
         """Execute one simulation tick."""
