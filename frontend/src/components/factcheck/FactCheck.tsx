@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Search, Loader2, ShieldAlert, CheckCircle2, AlertTriangle, XCircle, ExternalLink, RefreshCw } from 'lucide-react'
 
-const API = 'http://localhost:5000'
+const API = import.meta.env.PROD ? '' : 'http://localhost:5000'
 
 interface VerdictResult {
   claim: string

@@ -16,7 +16,7 @@ import VoterIQ from './components/quiz/VoterIQ'
 import DataHub from './components/datahub/DataHub'
 import './index.css'
 
-const API = 'http://localhost:5000'
+const API = import.meta.env.PROD ? '' : 'http://localhost:5000'
 
 // ── Tab Definitions ──
 const TABS = [
@@ -75,7 +75,7 @@ function App() {
   // ── Socket Connection (only when logged in) ──
   useEffect(() => {
     if (!user) return
-    const s = io(API, { transports: ['polling'], upgrade: false })
+    const s = io(API || undefined, { transports: ['polling'], upgrade: false })
     s.on('connect', () => setConnected(true))
     s.on('disconnect', () => setConnected(false))
     s.on('stats_update', (data: Stats) => setStats(data))

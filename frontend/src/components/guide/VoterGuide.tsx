@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, ChevronUp, MessageSquare, Send, Loader2, FileText, Lightbulb, Shield, Eye, Users, CheckCircle2, Activity } from 'lucide-react'
 
-const API = 'http://localhost:5000'
+const API = import.meta.env.PROD ? '' : 'http://localhost:5000'
 
 interface Step {
   id: number

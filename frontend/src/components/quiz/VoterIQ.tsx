@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Brain, CheckCircle2, XCircle, Trophy, Loader2, ArrowRight, PlayCircle, Flame, BookOpen } from 'lucide-react'
 
-const API = 'http://localhost:5000'
+const API = import.meta.env.PROD ? '' : 'http://localhost:5000'
 
 interface Question {
   id: number
