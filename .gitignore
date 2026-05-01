@@ -30,3 +30,9 @@ dist-ssr
 __pycache__/
 *.pyc
 *.pyo
+.pytest_cache/
+
+# Archives (deployment artifacts)
+*.tar.gz
+*.zip
+*.tar
