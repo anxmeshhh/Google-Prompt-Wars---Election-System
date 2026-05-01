@@ -59,12 +59,15 @@ class GeminiService:
             raw = response.text.strip()
             # Strip markdown code fences if present
             if raw.startswith('```'):
-                raw = raw.split('\n', 1)[-1]  # remove first line
+                lines = raw.split('\n')
+                if len(lines) > 1:
+                    raw = '\n'.join(lines[1:])
                 if raw.endswith('```'):
                     raw = raw[:-3].strip()
             return raw
         except Exception as e:
-            return f'{{"error": "{str(e)}"}}'
+            import json
+            return json.dumps({"error": str(e)})
 
     def _fallback_response(self, prompt: str) -> str:
         """Provide a helpful response when API key is not configured."""

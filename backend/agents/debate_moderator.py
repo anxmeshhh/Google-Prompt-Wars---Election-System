@@ -66,7 +66,7 @@ class DebateModeratorAgent:
         
         try:
             raw_response = self.gemini.generate_json(prompt, system_instruction=self.system_prompt)
-            return json.loads(raw_response)
+            return json.loads(raw_response, strict=False)
         except Exception as e:
             print(f"Error in Debate Moderator Agent: {e}")
             return {

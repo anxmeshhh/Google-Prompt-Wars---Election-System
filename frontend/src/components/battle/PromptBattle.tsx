@@ -46,6 +46,10 @@ export default function PromptBattle() {
       })
       const data = await res.json()
       if (data.error) throw new Error(data.error)
+      if (data.battle_data && data.battle_data.error) throw new Error(data.battle_data.error)
+      if (!data.battle_data || !data.battle_data.arguments_a || !data.battle_data.arguments_b) {
+        throw new Error("AI returned malformed debate data. Please try again.")
+      }
       setBattleData(data.battle_data)
     } catch (err: any) {
       setError(err.message || 'Failed to generate debate.')
@@ -179,7 +183,7 @@ export default function PromptBattle() {
                 </div>
                 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  {battleData.arguments_a.map((arg, i) => <ArgumentCard key={i} arg={arg} align="left" />)}
+                  {battleData.arguments_a?.map((arg, i) => <ArgumentCard key={i} arg={arg} align="left" />)}
                 </div>
               </div>
 
@@ -196,7 +200,7 @@ export default function PromptBattle() {
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  {battleData.arguments_b.map((arg, i) => <ArgumentCard key={i} arg={arg} align="right" />)}
+                  {battleData.arguments_b?.map((arg, i) => <ArgumentCard key={i} arg={arg} align="right" />)}
                 </div>
               </div>
             </div>

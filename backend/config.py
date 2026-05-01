@@ -15,6 +15,7 @@ class Config:
     """Application configuration — loaded from environment."""
     SECRET_KEY = os.getenv('SECRET_KEY', 'electaverse-secret-key-dev')
     GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
+    GROQ_API_KEY = os.getenv('GROQ_API_KEY', '')
     CORS_ORIGINS = os.getenv('CORS_ORIGINS', 'http://localhost:5173').split(',')
 
     # MySQL
