@@ -43,7 +43,15 @@ class FactCheckerAgent:
 
         try:
             raw_response = self.gemini.generate_json(prompt, system_instruction=self.system_prompt)
-            return json.loads(raw_response)
+            data = json.loads(raw_response, strict=False)
+            if "error" in data:
+                return {
+                    "verdict": "ERROR",
+                    "confidence_score": 0,
+                    "reasoning": data["error"],
+                    "official_sources": []
+                }
+            return data
         except Exception as e:
             print(f"Error in Fact Checker Agent: {e}")
             return {

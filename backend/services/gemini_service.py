@@ -19,7 +19,7 @@ class GeminiService:
         
         self.groq_api_key = Config.GROQ_API_KEY
         self.groq_client = Groq(api_key=self.groq_api_key) if self.groq_api_key else None
-        self.groq_model = "llama3-8b-8192"
+        self.groq_model = "llama-3.3-70b-versatile"
 
     def _configure(self):
         """Configure the Gemini SDK."""
