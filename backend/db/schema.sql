@@ -104,6 +104,37 @@ CREATE TABLE IF NOT EXISTS battle_records (
 );
 
 -- ─────────────────────────────────────────────
+-- CONTENT (serves Timeline + Voter Guide — zero hardcoded UI text)
+-- ─────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS election_phases (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    phase_key VARCHAR(30) NOT NULL UNIQUE,
+    title VARCHAR(100) NOT NULL,
+    description TEXT NOT NULL,
+    icon VARCHAR(10) NOT NULL DEFAULT '📋',
+    start_label VARCHAR(50) NOT NULL,
+    end_label VARCHAR(50) NOT NULL,
+    duration_info VARCHAR(100) NOT NULL,
+    key_activities JSON NOT NULL,
+    role_actions JSON NOT NULL COMMENT '{"voter":[],"official":[],"observer":[]}',
+    display_order INT NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS voter_guide_steps (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    step_number INT NOT NULL,
+    title VARCHAR(100) NOT NULL,
+    description TEXT NOT NULL,
+    icon VARCHAR(10) NOT NULL DEFAULT '📋',
+    documents_required JSON COMMENT '["Voter ID","Aadhaar"]',
+    tips JSON COMMENT '["Arrive early","Carry pen"]',
+    role_specific_notes JSON NOT NULL COMMENT '{"voter":"...","official":"...","observer":"..."}',
+    sim_phase_link VARCHAR(30) DEFAULT NULL COMMENT 'Links to simulation phase for real-time highlight',
+    display_order INT NOT NULL DEFAULT 0
+);
+
+-- ─────────────────────────────────────────────
 -- CONFIGURATION (replaces hardcoded values)
 -- ─────────────────────────────────────────────
 
