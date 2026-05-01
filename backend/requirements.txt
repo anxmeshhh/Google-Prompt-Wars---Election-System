@@ -7,3 +7,5 @@ gevent==25.4.1
 gevent-websocket==0.10.1
 mysql-connector-python==9.3.0
 groq==0.37.1
+gunicorn==23.0.0
+eventlet==0.40.1
