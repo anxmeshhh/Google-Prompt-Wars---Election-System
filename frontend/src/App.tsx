@@ -10,6 +10,7 @@ import LiveDashboard from './components/liveops/LiveDashboard'
 import ElectionTimeline from './components/timeline/ElectionTimeline'
 import VoterGuide from './components/guide/VoterGuide'
 import AIAssistant from './components/assistant/AIAssistant'
+import FactCheck from './components/factcheck/FactCheck'
 import './index.css'
 
 const API = 'http://localhost:5000'
@@ -70,7 +71,7 @@ function App() {
   // ── Socket Connection (only when logged in) ──
   useEffect(() => {
     if (!user) return
-    const s = io(API, { transports: ['websocket', 'polling'] })
+    const s = io(API, { transports: ['polling'], upgrade: false })
     s.on('connect', () => setConnected(true))
     s.on('disconnect', () => setConnected(false))
     s.on('stats_update', (data: Stats) => setStats(data))
@@ -199,7 +200,7 @@ function App() {
             {activeTab === 'timeline' && <ElectionTimeline token={token} userRole={user.role} currentPhase={stats?.clock?.phase} stats={stats} />}
             {activeTab === 'guide' && <VoterGuide token={token} userRole={user.role} currentPhase={stats?.clock?.phase} stats={stats} />}
             {activeTab === 'assistant' && <AIAssistant token={token} userRole={user.role} stats={stats} />}
-            {activeTab === 'factcheck' && <PlaceholderPage title="Fact Checker" desc="AI-powered claim verification — coming in Module 6" />}
+            {activeTab === 'factcheck' && <FactCheck token={token} />}
             {activeTab === 'battle' && <PlaceholderPage title="Prompt Wars Arena" desc="AI vs AI policy debates — coming in Module 7" />}
             {activeTab === 'quiz' && <PlaceholderPage title="Voter IQ Quiz" desc="Test your election knowledge — coming in Module 7" />}
             {activeTab === 'liveops' && <LiveDashboard token={token} />}

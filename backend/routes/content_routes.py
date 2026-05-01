@@ -225,3 +225,38 @@ def ask_ai_about_step(step_id):
         'agent': 'ElectionAnalyst',
         'user_role': role,
     })
+
+
+# ═══════════════════════════════════════════════════
+# AI FACT CHECKER
+# ═══════════════════════════════════════════════════
+
+@content_bp.route('/api/content/fact-check', methods=['POST'])
+def fact_check_claim():
+    """Verify a user claim using the FactCheckerAgent."""
+    user, role = _get_current_user()
+    if not user:
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    data = request.get_json()
+    claim = data.get('claim', '').strip()
+    if not claim:
+        return jsonify({'error': 'Claim is required'}), 400
+
+    # Get live context if engine is available
+    live_context = None
+    if _engine:
+        live_context = _engine.get_stats()
+
+    from agents.fact_checker import FactCheckerAgent
+    agent = FactCheckerAgent()
+    
+    result = agent.verify_claim(claim, live_context)
+    
+    return jsonify({
+        'claim': claim,
+        'verdict': result.get('verdict', 'ERROR'),
+        'confidence_score': result.get('confidence_score', 0),
+        'reasoning': result.get('reasoning', 'Analysis failed.'),
+        'official_sources': result.get('official_sources', [])
+    })

@@ -143,6 +143,16 @@ If you are wondering exactly how data flows through ElectaVerse, here is the sim
 
 ---
 
+## ⚙️ System Mechanics: How It Actually Works
+
+To ensure this platform is robust, scalable, and completely free of "fluff" or hardcoded hallucinations, the system operates on a strict data-driven architecture:
+
+1. **No Hardcoded Values**: Everything—from constituencies and polling booths to user roles and election phases—is fetched dynamically from the MySQL database. There is absolutely no hardcoded mock data in the React components or Python scripts. If the database updates, the UI immediately reflects it.
+2. **Real-Time Source of Truth**: AI models are prone to hallucinating facts (e.g., claiming a booth is open when it isn't). To prevent this, every single request to the **AI Election Assistant** or **AI Fact Checker** is injected with a **Live Simulation Context Payload**. The AI doesn't guess the queue length; the backend passes the exact current queue length, active incidents, and clock phase directly into the system prompt. The AI acts purely as an intelligent router and explainer for the *actual* live data.
+3. **Deterministic Simulation Engine**: The backend runs a continuous threaded event loop (`engine.py`). It uses probabilistic models (like Poisson distributions for queue arrivals) to simulate election-day traffic across hundreds of database-backed booths. This engine is the beating heart of the platform, broadcasting state changes to the frontend via WebSockets every 3 seconds.
+
+---
+
 ## 🏗️ System Architecture
 
 ### Backend (Python / Flask / SocketIO)
