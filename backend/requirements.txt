@@ -5,3 +5,4 @@ google-generativeai==0.8.5
 python-dotenv==1.1.0
 gevent==25.4.1
 gevent-websocket==0.10.1
+mysql-connector-python==9.3.0
