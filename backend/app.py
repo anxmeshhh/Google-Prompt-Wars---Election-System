@@ -3,9 +3,6 @@ ElectaVerse — Flask Application Entry Point
 Initializes Flask, SocketIO, database, simulation engine, and all API routes.
 """
 
-from gevent import monkey
-monkey.patch_all()
-
 import sys
 import os
 
@@ -27,7 +24,7 @@ app.config['SECRET_KEY'] = Config.SECRET_KEY
 CORS(app, origins=Config.CORS_ORIGINS)
 
 # ── SocketIO ──
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
 # ── Initialize Database ──
 Database.initialize()

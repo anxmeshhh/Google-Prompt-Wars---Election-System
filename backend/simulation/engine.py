@@ -113,7 +113,7 @@ class SimulationEngine:
             
             # Proactive AI sweep every 50 ticks (~2.5 min) to conserve API quota
             if self.clock.total_ticks - last_sweep_tick >= 50:
-                self._proactive_ai_sweep()
+                threading.Thread(target=self._proactive_ai_sweep, daemon=True).start()
                 last_sweep_tick = self.clock.total_ticks
                 
             if self.socketio:
