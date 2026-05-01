@@ -5,6 +5,29 @@ CREATE DATABASE IF NOT EXISTS electaverse;
 USE electaverse;
 
 -- ─────────────────────────────────────────────
+-- AUTHENTICATION & USERS
+-- ─────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    role ENUM('voter', 'official', 'observer') DEFAULT 'voter',
+    constituency_id VARCHAR(10),
+    last_login DATETIME,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+    token VARCHAR(64) PRIMARY KEY,
+    user_id INT NOT NULL,
+    expires_at DATETIME NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- ─────────────────────────────────────────────
 -- MASTER DATA
 -- ─────────────────────────────────────────────
 
