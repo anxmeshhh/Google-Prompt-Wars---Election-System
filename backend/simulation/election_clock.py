@@ -33,6 +33,22 @@ class ElectionClock:
 
         self._update_phase()
 
+    def set_time(self, hour: int, minute: int = 0):
+        """Manually jump to a specific time."""
+        self.current_hour = hour
+        self.current_minute = minute
+        self.day_complete = False
+        self._update_phase()
+
+    def reset(self):
+        """Reset the clock back to the start."""
+        self.current_hour = self.start_hour
+        self.current_minute = 0
+        self.total_ticks = 0
+        self.day_complete = False
+        self._update_phase()
+
+
     def _update_phase(self):
         """Update the election phase based on current time."""
         if self.current_hour < self.start_hour:

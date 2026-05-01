@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { AlertTriangle, Users, MapPin, Search } from 'lucide-react'
+import { AlertTriangle, Users, MapPin, Search, Play, Pause, RotateCcw, FastForward } from 'lucide-react'
 
 const API = 'http://localhost:5000'
 
@@ -79,6 +79,19 @@ export default function LiveDashboard({ token }: { token: string | null }) {
     )
   }
 
+  const handleSimControl = async (action: string, hour?: number) => {
+    try {
+      const payload = hour !== undefined ? JSON.stringify({ hour }) : undefined
+      await fetch(`${API}/api/simulation/${action}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: payload
+      })
+    } catch (err) {
+      console.error(`Failed to ${action} simulation`, err)
+    }
+  }
+
   return (
     <div className="section" style={{ maxWidth: 1400 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 24 }}>
@@ -100,6 +113,44 @@ export default function LiveDashboard({ token }: { token: string | null }) {
               fontFamily: 'var(--font-body)', outline: 'none'
             }}
           />
+        </div>
+      </div>
+
+      {/* DEMO CONTROL PANEL (GOD MODE) */}
+      <div className="glass" style={{
+        marginBottom: 24, padding: 16, borderRadius: 'var(--radius-md)',
+        border: '1px solid var(--color-primary-light)', display: 'flex', alignItems: 'center', gap: 20
+      }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-primary-light)', textTransform: 'uppercase', letterSpacing: 1 }}>
+          Demo God Mode
+        </div>
+        <div style={{ width: 1, height: 24, background: 'var(--border)' }} />
+        
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => handleSimControl('pause')} className="btn btn-secondary" style={{ padding: '8px 16px', display: 'flex', gap: 6, fontSize: 12 }}>
+            <Pause size={14} /> Pause
+          </button>
+          <button onClick={() => handleSimControl('resume')} className="btn btn-primary" style={{ padding: '8px 16px', display: 'flex', gap: 6, fontSize: 12 }}>
+            <Play size={14} /> Resume
+          </button>
+          <button onClick={() => handleSimControl('reset')} className="btn btn-secondary" style={{ padding: '8px 16px', display: 'flex', gap: 6, fontSize: 12 }}>
+            <RotateCcw size={14} /> Reset (7 AM)
+          </button>
+        </div>
+
+        <div style={{ width: 1, height: 24, background: 'var(--border)', margin: '0 8px' }} />
+
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Jump to:</span>
+          <button onClick={() => handleSimControl('jump', 10)} className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: 12, display: 'flex', gap: 4 }}>
+            <FastForward size={14} /> 10:00 (Rush)
+          </button>
+          <button onClick={() => handleSimControl('jump', 16)} className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: 12, display: 'flex', gap: 4 }}>
+            <FastForward size={14} /> 16:00 (Eve Rush)
+          </button>
+          <button onClick={() => handleSimControl('jump', 18)} className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: 12, display: 'flex', gap: 4 }}>
+            <FastForward size={14} /> 18:00 (Close)
+          </button>
         </div>
       </div>
 

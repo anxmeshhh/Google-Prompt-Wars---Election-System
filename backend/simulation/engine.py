@@ -19,6 +19,7 @@ class SimulationEngine:
 
     def __init__(self, socketio=None):
         self.socketio = socketio
+        self.is_paused = False
         self.booths: list[Booth] = []
         self.incidents: list[Incident] = []
         self.incident_tick_map: dict[str, int] = {}
@@ -106,17 +107,33 @@ class SimulationEngine:
     def stop(self):
         self.running = False
 
+    def pause(self):
+        self.is_paused = True
+
+    def resume(self):
+        self.is_paused = False
+
+    def reset(self):
+        self.clock.reset()
+        self.incidents = []
+        self._load_booths() # Resets queues and turnout
+        self._emit_updates()
+
+    def jump_time(self, hour: int):
+        self.clock.set_time(hour, 0)
+        self._emit_updates()
+
     def _run_loop(self):
         last_sweep_tick = 0
         while self.running and not self.clock.day_complete:
-            self._tick()
-            
-            # Proactive AI sweep every 50 ticks (~2.5 min) to conserve API quota
-            if self.clock.total_ticks - last_sweep_tick >= 50:
-                threading.Thread(target=self._proactive_ai_sweep, daemon=True).start()
-                last_sweep_tick = self.clock.total_ticks
+            if not self.is_paused:
+                self._tick()
                 
-            if self.socketio:
+                # Proactive AI sweep every 50 ticks (~2.5 min) to conserve API quota
+                if self.clock.total_ticks - last_sweep_tick >= 50:
+                    self._proactive_ai_sweep()
+                    last_sweep_tick = self.clock.total_ticks
+                    
                 self._emit_updates()
             time.sleep(self.tick_interval)
 
