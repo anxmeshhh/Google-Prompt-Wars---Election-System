@@ -7,6 +7,9 @@ import secrets
 from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+import os
 from db.connection import Database
 
 auth_bp = Blueprint('auth', __name__)
@@ -126,6 +129,60 @@ def login():
         'user': _serialize_user(user),
     })
 
+@auth_bp.route('/api/auth/google', methods=['POST'])
+def google_login():
+    """Login or register with Google OAuth."""
+    data = request.get_json()
+    token = data.get('token')
+    role = data.get('role', 'voter')
+
+    if not token:
+        return jsonify({'error': 'Token is required'}), 400
+
+    try:
+        # Verify Google token
+        client_id = os.environ.get('GOOGLE_CLIENT_ID', '855420223700-m7qonpntg4p0i1s3u1fbs52lck69e7t4.apps.googleusercontent.com')
+        idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), client_id)
+        email = idinfo['email'].lower()
+        name = idinfo.get('name', email.split('@')[0])
+    except ValueError:
+        return jsonify({'error': 'Invalid Google token'}), 401
+
+    # Find user
+    user = Database.execute_one(
+        "SELECT id, name, email, role, constituency_id, created_at FROM users WHERE email = %s",
+        (email,)
+    )
+
+    if not user:
+        # Register new user
+        if role not in ('voter', 'official', 'observer'):
+            role = 'voter'
+        pw_hash = generate_password_hash(secrets.token_hex(16)) # Random password
+        Database.execute_write(
+            "INSERT INTO users (name, email, password_hash, role) VALUES (%s, %s, %s, %s)",
+            (name, email, pw_hash, role)
+        )
+        user = Database.execute_one(
+            "SELECT id, name, email, role, constituency_id, created_at FROM users WHERE email = %s",
+            (email,)
+        )
+
+    # Create session token
+    session_token = secrets.token_hex(32)
+    expires = datetime.now() + timedelta(days=7)
+    Database.execute_write(
+        "INSERT INTO sessions (token, user_id, expires_at) VALUES (%s, %s, %s)",
+        (session_token, user['id'], expires)
+    )
+
+    # Update last login
+    Database.execute_write("UPDATE users SET last_login = NOW() WHERE id = %s", (user['id'],))
+
+    return jsonify({
+        'token': session_token,
+        'user': _serialize_user(user),
+    })
 
 @auth_bp.route('/api/auth/me', methods=['GET'])
 def get_current_user():

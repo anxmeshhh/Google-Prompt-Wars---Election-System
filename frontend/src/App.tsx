@@ -14,6 +14,7 @@ import FactCheck from './components/factcheck/FactCheck'
 import PromptBattle from './components/battle/PromptBattle'
 import VoterIQ from './components/quiz/VoterIQ'
 import DataHub from './components/datahub/DataHub'
+import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google'
 import './index.css'
 
 const API = import.meta.env.PROD ? '' : 'http://localhost:5000'
@@ -56,6 +57,16 @@ function App() {
   const [socket, setSocket] = useState<Socket | null>(null)
   const [connected, setConnected] = useState(false)
   const [stats, setStats] = useState<Stats | null>(null)
+  const [highContrast, setHighContrast] = useState(false)
+  const [textScale, setTextScale] = useState<'normal' | 'large' | 'xlarge'>('normal')
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', highContrast ? 'high-contrast' : 'default')
+  }, [highContrast])
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-text-scale', textScale)
+  }, [textScale])
 
   // ── Check existing session ──
   useEffect(() => {
@@ -141,6 +152,21 @@ function App() {
             }}>ElectaVerse</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {/* Accessibility Menu */}
+            <div style={{ display: 'flex', gap: 4, marginRight: 8 }}>
+              <button onClick={() => setHighContrast(!highContrast)} title="Toggle High Contrast" style={{
+                background: 'none', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text-primary)', padding: '2px 6px', cursor: 'pointer', fontSize: 12
+              }}>
+                {highContrast ? '🎨 Normal' : '👁️ Contrast'}
+              </button>
+              <select aria-label="Text Scale" value={textScale} onChange={e => setTextScale(e.target.value as any)} style={{
+                background: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)', borderRadius: 4, fontSize: 12, padding: '2px 4px'
+              }}>
+                <option value="normal">A</option>
+                <option value="large">A+</option>
+                <option value="xlarge">A++</option>
+              </select>
+            </div>
             {stats?.clock && (
               <div className="badge badge-info" style={{ gap: 6 }}>
                 <span>⏱</span><span>{stats.clock.time_string}</span>
@@ -267,12 +293,35 @@ function AuthPage({ onLogin }: { onLogin: (user: UserData, token: string) => voi
     }
   }
 
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    setError('')
+    setLoading(true)
+    try {
+      const res = await fetch(`${API}/api/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: credentialResponse.credential, role }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error || 'Google login failed')
+        return
+      }
+      onLogin(data.user, data.token)
+    } catch {
+      setError('Cannot connect to server for Google Login.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
-    <div style={{
-      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'var(--bg-primary)', padding: 24,
-      backgroundImage: 'radial-gradient(circle at 30% 20%, rgba(99,102,241,0.08) 0%, transparent 50%), radial-gradient(circle at 70% 80%, rgba(245,158,11,0.06) 0%, transparent 50%)',
-    }}>
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || '855420223700-m7qonpntg4p0i1s3u1fbs52lck69e7t4.apps.googleusercontent.com'}>
+      <div style={{
+        minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'var(--bg-primary)', padding: 24,
+        backgroundImage: 'radial-gradient(circle at 30% 20%, rgba(99,102,241,0.08) 0%, transparent 50%), radial-gradient(circle at 70% 80%, rgba(245,158,11,0.06) 0%, transparent 50%)',
+      }}>
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -385,13 +434,25 @@ function AuthPage({ onLogin }: { onLogin: (user: UserData, token: string) => voi
             {loading ? 'Please wait...' : (mode === 'login' ? 'Sign In' : 'Create Account')}
             {!loading && <ChevronRight size={16} />}
           </button>
+
+          {/* Google Login */}
+          <div style={{ marginTop: 8, display: 'flex', justifyContent: 'center' }}>
+            <GoogleLogin 
+              onSuccess={handleGoogleSuccess}
+              onError={() => setError('Google Sign-In was unsuccessful')}
+              theme="filled_black"
+              shape="rectangular"
+              text={mode === 'login' ? 'signin_with' : 'signup_with'}
+            />
+          </div>
         </form>
 
         <p style={{ textAlign: 'center', marginTop: 20, fontSize: 12, color: 'var(--text-muted)' }}>
           Powered by Google Gemini · Agentic AI Election Intelligence
         </p>
       </motion.div>
-    </div>
+      </div>
+    </GoogleOAuthProvider>
   )
 }
 

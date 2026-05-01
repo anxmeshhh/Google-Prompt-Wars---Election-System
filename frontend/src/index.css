@@ -49,7 +49,42 @@
   --shadow-md: 0 4px 24px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 8px 48px rgba(0, 0, 0, 0.5);
   --shadow-glow: 0 0 30px rgba(99, 102, 241, 0.15);
+  
+  /* ── Default Zoom ── */
+  --zoom-level: 1;
 }
+
+/* ── Accessibility: High Contrast Mode ── */
+[data-theme="high-contrast"] {
+  --bg-primary: #000000;
+  --bg-secondary: #0a0a0a;
+  --bg-surface: rgba(255, 255, 255, 0.1);
+  --bg-surface-hover: rgba(255, 255, 255, 0.15);
+  --border: rgba(255, 255, 255, 0.3);
+  --border-hover: rgba(255, 255, 255, 0.5);
+  
+  --color-primary: #818cf8;
+  --color-accent: #fbbf24;
+  --color-success: #34d399;
+  --color-danger: #f87171;
+  --color-warning: #fb923c;
+  --color-info: #60a5fa;
+
+  --text-primary: #ffffff;
+  --text-secondary: #f1f5f9;
+  --text-muted: #cbd5e1;
+}
+
+/* ── Accessibility: Font Scaling ── */
+[data-text-scale="large"] {
+  --zoom-level: 1.1;
+  font-size: 110%;
+}
+[data-text-scale="xlarge"] {
+  --zoom-level: 1.25;
+  font-size: 125%;
+}
+
 
 /* ── Reset ── */
 *, *::before, *::after {
