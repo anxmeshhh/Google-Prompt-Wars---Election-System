@@ -34,12 +34,17 @@ export default function VoterGuide({ token, userRole, currentPhase, stats }: Pro
   const [aiAnswer, setAiAnswer] = useState<string | null>(null)
   const [aiLoading, setAiLoading] = useState(false)
 
+  const [assignedBooth, setAssignedBooth] = useState<any>(null)
+
   useEffect(() => {
     fetch(`${API}/api/content/voter-guide`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(r => r.json())
-      .then(data => setSteps(data.steps || []))
+      .then(data => {
+        setSteps(data.steps || [])
+        if (data.assigned_booth) setAssignedBooth(data.assigned_booth)
+      })
       .catch(err => console.error('Failed to load voter guide:', err))
       .finally(() => setLoading(false))
   }, [token])
@@ -109,6 +114,44 @@ export default function VoterGuide({ token, userRole, currentPhase, stats }: Pro
           {userRole.toUpperCase()} VIEW
         </div>
       </div>
+
+      {/* Location-Based Context */}
+      {assignedBooth && (
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} style={{
+          marginBottom: 32, padding: 20, borderRadius: 'var(--radius-lg)',
+          background: 'var(--bg-secondary)', border: '1px solid var(--border)',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.1)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+            <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(99,102,241,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)' }}>
+              📍
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1, fontWeight: 600 }}>Your Assigned Booth</div>
+              <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)' }}>{assignedBooth.name}</div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+            <div style={{ flex: 1, minWidth: 140, padding: 12, background: 'rgba(0,0,0,0.2)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Live Queue</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: assignedBooth.queue_length > 50 ? 'var(--color-danger)' : assignedBooth.queue_length > 20 ? 'var(--color-warning)' : 'var(--color-success)' }}>
+                {assignedBooth.queue_length} <span style={{ fontSize: 12, fontWeight: 400 }}>voters</span>
+              </div>
+            </div>
+            <div style={{ flex: 1, minWidth: 140, padding: 12, background: 'rgba(0,0,0,0.2)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>EVM Status</div>
+              <div style={{ fontSize: 16, fontWeight: 600, color: assignedBooth.evm_status === 'ok' ? 'var(--color-success)' : 'var(--color-danger)', textTransform: 'uppercase' }}>
+                {assignedBooth.evm_status === 'ok' ? '✅ Online' : '🚨 Error'}
+              </div>
+            </div>
+          </div>
+          {assignedBooth.open_incidents_count > 0 && (
+            <div style={{ marginTop: 12, fontSize: 12, color: 'var(--color-danger)', display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(239,68,68,0.1)', padding: '6px 12px', borderRadius: 4 }}>
+              <Activity size={14} /> Attention: {assignedBooth.open_incidents_count} open incidents reported here.
+            </div>
+          )}
+        </motion.div>
+      )}
 
       {/* Steps */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>

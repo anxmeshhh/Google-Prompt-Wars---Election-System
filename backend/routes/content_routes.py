@@ -10,6 +10,13 @@ from routes.auth_routes import _get_user_by_token
 
 content_bp = Blueprint('content', __name__)
 
+# Engine reference — set via init_app()
+_engine = None
+
+def init_app(engine):
+    global _engine
+    _engine = engine
+
 
 def _get_current_user():
     """Extract authenticated user from request. Returns (user_dict, role_str)."""
@@ -153,11 +160,33 @@ def get_voter_guide():
 
         steps.append(step)
 
-    return jsonify({
+    response_data = {
         'steps': steps,
         'user_role': role,
         'total': len(steps),
-    })
+    }
+
+    # Location-Based Live Context: Assign a booth based on user's constituency
+    if user.get('constituency_id') and _engine:
+        # Find booths in their constituency
+        local_booths = [b for b in _engine.booths if b.constituency_id == user['constituency_id']]
+        if local_booths:
+            # Deterministically assign a booth based on user ID
+            assigned_booth = local_booths[user['id'] % len(local_booths)]
+            
+            # Find any open incidents for this booth
+            booth_incidents = [i for i in _engine.incidents if i.booth_id == assigned_booth.id and i.status != 'resolved']
+            
+            response_data['assigned_booth'] = {
+                'id': assigned_booth.id,
+                'name': assigned_booth.name,
+                'constituency_id': assigned_booth.constituency_id,
+                'queue_length': assigned_booth.queue_length,
+                'evm_status': assigned_booth.evm_status,
+                'open_incidents_count': len(booth_incidents)
+            }
+
+    return jsonify(response_data)
 
 
 @content_bp.route('/api/content/voter-guide/<int:step_id>/ask-ai', methods=['POST'])

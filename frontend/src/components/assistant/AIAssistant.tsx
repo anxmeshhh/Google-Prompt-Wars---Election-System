@@ -71,7 +71,28 @@ export default function AIAssistant({ token, userRole, stats }: Props) {
     })
       .then(r => r.json())
       .then(data => {
-        if (data.history) setHistory(data.history)
+        if (data.history) {
+          setHistory(data.history)
+          
+          // Populate main chat view (history comes DESC, so reverse it)
+          const loadedMessages: ChatMessage[] = []
+          ;[...data.history].reverse().forEach((item: any) => {
+            loadedMessages.push({
+              id: ++msgId.current,
+              role: 'user',
+              text: item.message,
+              timestamp: new Date(item.timestamp)
+            })
+            loadedMessages.push({
+              id: ++msgId.current,
+              role: 'ai',
+              text: item.response,
+              agent: item.agent,
+              timestamp: new Date(item.timestamp)
+            })
+          })
+          setMessages(loadedMessages)
+        }
       })
       .catch(err => console.error('Failed to load history:', err))
   }, [token])

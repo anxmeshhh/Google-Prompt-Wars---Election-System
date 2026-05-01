@@ -98,6 +98,31 @@ export default function ElectionTimeline({ token, userRole, currentPhase, stats 
         </div>
       </div>
 
+      {/* Live Simulation Progress */}
+      {stats && stats.clock && (
+        <div style={{ marginBottom: 40 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8, textTransform: 'uppercase' }}>
+            <span>Election Day Progress</span>
+            <span>{stats.clock.progress_percent}%</span>
+          </div>
+          <div style={{ width: '100%', height: 6, background: 'var(--bg-secondary)', borderRadius: 3, overflow: 'hidden' }}>
+            <motion.div 
+              initial={{ width: 0 }} 
+              animate={{ width: `${stats.clock.progress_percent}%` }}
+              transition={{ duration: 1 }}
+              style={{ height: '100%', background: 'linear-gradient(90deg, var(--color-primary), var(--color-success))' }}
+            />
+          </div>
+          {stats.open_incidents > 0 && (
+            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+              style={{ marginTop: 12, fontSize: 12, padding: '8px 12px', background: 'rgba(239,68,68,0.1)', color: 'var(--color-danger)', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Activity size={14} style={{ animation: 'pulse 2s infinite' }} />
+              Live Ticker: {stats.open_incidents} active incidents currently being triaged by AI system.
+            </motion.div>
+          )}
+        </div>
+      )}
+
       {/* Vertical Timeline */}
       <div style={{ position: 'relative', paddingLeft: 40 }}>
         {/* Vertical line */}

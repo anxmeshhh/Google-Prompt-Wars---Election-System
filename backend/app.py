@@ -36,7 +36,7 @@ engine = SimulationEngine(socketio=socketio)
 from routes.booth_routes import booth_bp, init_app as init_booth_routes
 from routes.incident_routes import incident_bp, init_app as init_incident_routes
 from routes.auth_routes import auth_bp
-from routes.content_routes import content_bp
+from routes.content_routes import content_bp, init_app as init_content_routes
 from routes.chat_routes import chat_bp, init_app as init_chat_routes
 from routes.battle_routes import battle_bp
 from routes.analytics_routes import analytics_bp, init_app as init_analytics_routes
@@ -46,6 +46,7 @@ init_booth_routes(engine)
 init_incident_routes(engine)
 init_analytics_routes(engine)
 init_chat_routes(engine)
+init_content_routes(engine)
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(content_bp)
