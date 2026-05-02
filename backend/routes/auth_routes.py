@@ -2,10 +2,10 @@
 ElectaVerse — Authentication Routes
 Handles user signup, login, logout, Google OAuth, JWT tokens,
 OTP email verification, and session management.
-All auth endpoints are rate-limited to prevent brute-force attacks.
+All auth endpoints are rate-limited and protected against brute-force attacks.
 """
 
-import re
+import time
 import secrets
 import logging
 from datetime import datetime, timedelta
@@ -16,17 +16,51 @@ from google.auth.transport import requests as google_requests
 from config import Config
 from db.connection import Database
 from services.security import (
-    create_access_token, create_refresh_token, verify_token, encrypt_pii
+    create_access_token, create_refresh_token, verify_token,
+    encrypt_pii, blacklist_token, check_password_strength
 )
 from services.email_service import (
     generate_otp, verify_otp, send_otp_email, send_welcome_email
 )
+from utils.validators import validate_email, validate_password, validate_role
 
 auth_bp = Blueprint('auth', __name__)
 logger = logging.getLogger('electaverse.auth')
 
-# Simple email regex for validation
-_EMAIL_RE = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+# ── Brute-Force Protection ──
+# Maps IP address → list of failed attempt timestamps
+_login_attempts: dict[str, list[float]] = {}
+MAX_FAILED_ATTEMPTS = 5
+LOCKOUT_DURATION_SECONDS = 15 * 60  # 15 minutes
+
+
+def _check_brute_force(ip: str) -> bool:
+    """Return True if the IP is currently locked out."""
+    if ip not in _login_attempts:
+        return False
+    # Clean old attempts outside lockout window
+    cutoff = time.time() - LOCKOUT_DURATION_SECONDS
+    _login_attempts[ip] = [t for t in _login_attempts[ip] if t > cutoff]
+    return len(_login_attempts[ip]) >= MAX_FAILED_ATTEMPTS
+
+
+def _record_failed_attempt(ip: str) -> None:
+    """Record a failed login attempt for brute-force tracking."""
+    if ip not in _login_attempts:
+        _login_attempts[ip] = []
+    _login_attempts[ip].append(time.time())
+    if len(_login_attempts[ip]) >= MAX_FAILED_ATTEMPTS:
+        logger.warning(f'[SECURITY] IP {ip} locked out after {MAX_FAILED_ATTEMPTS} failed attempts')
+        try:
+            from services.gcloud_logging_service import log_security_event
+            log_security_event('brute_force_lockout', {'ip': ip})
+        except Exception:
+            pass
+
+
+def _clear_failed_attempts(ip: str) -> None:
+    """Clear failed attempts after successful login."""
+    _login_attempts.pop(ip, None)
 
 
 def _get_user_by_token(token: str) -> dict | None:
@@ -93,18 +127,20 @@ def register():
     name = data.get('name', '').strip()
     email = data.get('email', '').strip().lower()
     password = data.get('password', '')
-    role = data.get('role', 'voter')
+    role = validate_role(data.get('role', 'voter'))
     constituency_id = data.get('constituency_id')
 
-    # Validation
-    if not name or not email or not password:
-        return jsonify({'error': 'Name, email, and password are required'}), 400
-    if not _EMAIL_RE.match(email):
-        return jsonify({'error': 'Invalid email format'}), 400
-    if len(password) < 6:
-        return jsonify({'error': 'Password must be at least 6 characters'}), 400
-    if role not in ('voter', 'official', 'observer'):
-        role = 'voter'
+    # Validation using centralized validators
+    if not name:
+        return jsonify({'error': 'Name is required'}), 400
+
+    email_valid, email_err = validate_email(email)
+    if not email_valid:
+        return jsonify({'error': email_err}), 400
+
+    pw_valid, pw_err = validate_password(password)
+    if not pw_valid:
+        return jsonify({'error': pw_err}), 400
 
     # Check if email already exists
     existing = Database.execute_one("SELECT id FROM users WHERE email = %s", (email,))
@@ -131,6 +167,13 @@ def register():
 
     logger.info(f'New user registered: {email} (role={role})')
 
+    # Log to Cloud Logging
+    try:
+        from services.gcloud_logging_service import log_auth_event
+        log_auth_event(email, 'register', True, request.remote_addr)
+    except Exception:
+        pass
+
     # Send welcome email (async-safe, non-blocking)
     try:
         send_welcome_email(email, name)
@@ -143,6 +186,14 @@ def register():
 @auth_bp.route('/api/auth/login', methods=['POST'])
 def login():
     """Authenticate with email and password. Returns JWT + session tokens."""
+    client_ip = request.remote_addr
+
+    # Brute-force protection check
+    if _check_brute_force(client_ip):
+        return jsonify({
+            'error': 'Too many failed attempts. Account temporarily locked. Try again in 15 minutes.'
+        }), 429
+
     data = request.get_json()
     email = data.get('email', '').strip().lower()
     password = data.get('password', '')
@@ -156,13 +207,34 @@ def login():
         (email,)
     )
     if not user:
+        _record_failed_attempt(client_ip)
+        try:
+            from services.gcloud_logging_service import log_auth_event
+            log_auth_event(email, 'login_failed', False, client_ip)
+        except Exception:
+            pass
         return jsonify({'error': 'Invalid email or password'}), 401
 
     # Check password
     if not check_password_hash(user['password_hash'], password):
+        _record_failed_attempt(client_ip)
+        try:
+            from services.gcloud_logging_service import log_auth_event
+            log_auth_event(email, 'login_failed', False, client_ip)
+        except Exception:
+            pass
         return jsonify({'error': 'Invalid email or password'}), 401
 
+    # Success — clear failed attempts
+    _clear_failed_attempts(client_ip)
     logger.info(f'User login: {email}')
+
+    try:
+        from services.gcloud_logging_service import log_auth_event
+        log_auth_event(email, 'login_success', True, client_ip)
+    except Exception:
+        pass
+
     return jsonify(_create_auth_response(user))
 
 
@@ -293,10 +365,20 @@ def get_current_user():
 
 @auth_bp.route('/api/auth/logout', methods=['POST'])
 def logout():
-    """Invalidate session token. JWT tokens expire naturally."""
+    """Invalidate session and JWT tokens immediately."""
     token = request.headers.get('Authorization', '').replace('Bearer ', '')
     if token:
+        # Blacklist the JWT for immediate revocation
+        blacklist_token(token)
+        # Also clean up legacy session
         Database.execute_write("DELETE FROM sessions WHERE token = %s", (token,))
+
+    try:
+        from services.gcloud_logging_service import log_auth_event
+        log_auth_event('', 'logout', True, request.remote_addr)
+    except Exception:
+        pass
+
     return jsonify({'message': 'Logged out successfully'})
 
 

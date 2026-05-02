@@ -45,14 +45,18 @@ limiter = Limiter(
 )
 
 csp = {
-    'default-src': [
-        '\'self\'',
-        '\'unsafe-inline\'',
-        '\'unsafe-eval\'',
-        '*'
-    ]
+    'default-src': ["'self'"],
+    'script-src': ["'self'", "'unsafe-inline'"],
+    'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+    'font-src': ["'self'", 'https://fonts.gstatic.com'],
+    'connect-src': ["'self'", 'https://generativelanguage.googleapis.com', 'wss:', 'ws:'],
+    'img-src': ["'self'", 'data:', 'https:'],
 }
 Talisman(app, content_security_policy=csp, force_https=False)
+
+# ── Security Middleware ──
+from middleware.security_middleware import register_security_middleware
+register_security_middleware(app)
 
 # ── CORS ──
 CORS(app, origins=Config.CORS_ORIGINS)
