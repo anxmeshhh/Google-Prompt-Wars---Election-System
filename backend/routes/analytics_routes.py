@@ -123,9 +123,9 @@ def google_services_status():
     on_gce = os.path.exists('/sys/class/dmi/id/product_name')
     services.append({
         'name': 'Google Compute Engine',
-        'status': 'active',
+        'status': 'active' if on_gce else 'dev_mode',
         'use_case': 'Production deployment: Docker containers (backend, frontend, MySQL) on electaverse-server',
-        'details': {'zone': 'us-central1-a', 'instance': 'electaverse-server'},
+        'details': {'zone': 'us-central1-a', 'instance': 'electaverse-server', 'on_gce': on_gce},
     })
 
     # 4. Google Fonts
