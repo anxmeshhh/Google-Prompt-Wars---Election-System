@@ -18,7 +18,7 @@ import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google'
 import { trackEvent } from './firebase'
 import './index.css'
 
-const API = import.meta.env.PROD ? '' : 'http://localhost:5000'
+const API = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'http://34.41.130.216:5000' : 'http://localhost:5000')
 
 // ── Tab Definitions ──
 const TABS = [
