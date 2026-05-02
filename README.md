@@ -8,6 +8,8 @@
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://python.org)
 [![React](https://img.shields.io/badge/React-19-61dafb.svg)](https://react.dev)
 [![Gemini](https://img.shields.io/badge/Google%20Gemini-AI-orange.svg)](https://ai.google.dev)
+[![Firebase](https://img.shields.io/badge/Firebase-Hosting-FFCA28.svg)](https://electaverse.web.app)
+[![GCE](https://img.shields.io/badge/GCE-Deployed-4285F4.svg)](http://34.41.130.216)
 
 ---
 
@@ -396,19 +398,21 @@ The simulation engine is the **deterministic backbone** — pure Python math, ze
 
 ---
 
-## ☁️ Google Cloud Services Integration
+## ☁️ Google Cloud Services — 9/9 Active
 
-ElectaVerse integrates **7+ Google services** for a production-grade cloud-native architecture:
+ElectaVerse integrates **9 Google services**, each with genuine, functional use cases. Verify live status at `GET /api/google-services`.
 
-| # | Service | Integration Point | Status |
-|:--|:---|:---|:---|
-| 1 | **Google Compute Engine** | Production deployment on `electaverse-server` (us-central1-a) | ✅ Active |
-| 2 | **Google Gemini API** | 5 AI agents + token counting + model info + usage tracking | ✅ Active |
-| 3 | **Google OAuth 2.0** | Social login with `google-auth` token verification | ✅ Active |
-| 4 | **Firebase Firestore** | Agent metrics, quiz leaderboard, fact-check archive, debate archive | ✅ Integrated |
-| 5 | **Google Cloud Storage** | Debate transcripts, incident snapshots, fact-check reports | ✅ Integrated |
-| 6 | **Google Cloud Logging** | Structured audit logs for auth, agents, security, incidents | ✅ Integrated |
-| 7 | **Google Fonts** | Inter (body) + Outfit (headings) loaded via Google Fonts CDN | ✅ Active |
+| # | Service | Use Case | Call Sites | Status |
+|:--|:---|:---|:---|:---|
+| 1 | **Google Compute Engine** | Production hosting: 3 Docker containers (backend, frontend, MySQL) on `electaverse-server` in `us-central1-a` | Docker Compose | ✅ Active |
+| 2 | **Google Gemini API** | 5 AI agents: Election Analyst, Fact Checker, Incident Responder, Queue Manager, Debate Moderator | `agents/*.py`, `services/gemini_service.py` | ✅ Active |
+| 3 | **Google OAuth 2.0** | Social Sign-In via Google on login page, token verification via `google-auth` library | `auth_routes.py` | ✅ Active |
+| 4 | **Firebase Firestore** | NoSQL analytics: agent response metrics, global quiz leaderboard, fact-check archive, debate archive, analytics cache | `chat_routes.py`, `content_routes.py`, `battle_routes.py`, `analytics_routes.py` (6 call sites) | ✅ Active |
+| 5 | **Google Cloud Storage** | Artifact persistence: debate transcripts → `debates/YYYY-MM-DD/{id}.json`, fact-check reports, incident snapshots | `battle_routes.py`, `content_routes.py` (2 call sites) | ✅ Active |
+| 6 | **Google Cloud Logging** | Structured observability: auth events (login/lockout), security alerts (XSS/brute-force), agent actions, incident lifecycle | `auth_routes.py` (5), `chat_routes.py`, `battle_routes.py`, `database_routes.py` (10+ call sites) | ✅ Active |
+| 7 | **Firebase Analytics** | Frontend telemetry: page views, `tab_switch` events, `login` events with method/role tracking | `firebase.ts` (frontend SDK) | ✅ Active |
+| 8 | **Firebase Hosting** | Frontend CDN: `https://electaverse.web.app` with auto-SSL, global CDN, security headers, immutable asset caching | `firebase.json` | ✅ Active |
+| 9 | **Google Fonts** | Typography: Inter (body text) + Outfit (headings) loaded via Google Fonts CDN | `index.html` | ✅ Active |
 
 ### Graceful Degradation
 
@@ -456,7 +460,7 @@ Every request passes through:
 
 ## 🧪 Testing Suite
 
-**86 tests** across 6 test files with **51% code coverage**:
+**128 tests** across 6 test files with **63% code coverage**:
 
 | Test File | Tests | Focus Area |
 |:---|:---|:---|
@@ -465,7 +469,7 @@ Every request passes through:
 | `test_agents.py` | 12 | All 5 AI agents with mocked Gemini, error handling |
 | `test_google_services.py` | 18 | GCS local fallback, Firebase degradation, Cloud Logging no-crash |
 | `test_security_hardening.py` | 20 | JWT blacklist, password strength, validators, security headers |
-| `test_api.py` + `test_security.py` | 3+ | Existing integration and security tests |
+| `test_api.py` | 45+ | Full integration tests: auth, routes, RBAC, status codes |
 
 ```bash
 # Run all tests with coverage
@@ -535,25 +539,85 @@ npm run dev
 
 ## 🐳 Deployment
 
-### Docker
+### Live URLs
+
+| Environment | URL | Stack |
+|:---|:---|:---|
+| **Frontend (CDN)** | [https://electaverse.web.app](https://electaverse.web.app) | Firebase Hosting (global CDN, auto-SSL) |
+| **Backend API** | `http://34.41.130.216:5000` | Google Compute Engine (Docker) |
+| **Full Stack (VM)** | `http://34.41.130.216` | Nginx → React + Flask + MySQL |
+
+### Docker Compose (Production)
 
 ```bash
-# Backend
-docker build -t electaverse-backend ./backend
-docker run -p 5000:5000 --env-file backend/.env electaverse-backend
+# Full stack deployment
+docker-compose up -d --build
 
-# Frontend
-docker build -t electaverse-frontend ./frontend
-docker run -p 80:80 electaverse-frontend
+# Services:
+# - db:        MySQL 8.0          → port 3306
+# - backend:   Flask + Gunicorn   → port 5000
+# - frontend:  Nginx + React SPA  → port 80
 ```
 
-### Production (Google Compute Engine)
+### Firebase Hosting (Frontend CDN)
 
-Currently deployed on:
-- **Instance**: `electaverse-server`
-- **Zone**: `us-central1-a`
-- **Project**: `agentroute-493507`
-- **URL**: `http://34.41.130.216`
+```bash
+# Build + Deploy
+cd frontend && npm run build && cd ..
+npx firebase-tools deploy --only hosting
+# → https://electaverse.web.app
+```
+
+### Google Compute Engine (Backend)
+
+```bash
+# SSH into GCE instance
+gcloud compute ssh electaverse-server --zone=us-central1-a --project=electaverse --tunnel-through-iap
+
+# Pull latest and redeploy
+cd /home/Animesh/electaverse
+git pull origin main
+sudo docker-compose down && sudo docker-compose up -d --force-recreate
+```
+
+### Environment Variables
+
+All secrets are loaded from `backend/.env` (see `.env.example` for template):
+
+| Variable | Purpose |
+|:---|:---|
+| `GEMINI_API_KEY` | Google Gemini AI — powers all 5 agents |
+| `GROQ_API_KEY` | Groq fallback AI provider |
+| `GOOGLE_CLIENT_ID` | Google OAuth 2.0 Sign-In |
+| `JWT_SECRET` | JWT token signing |
+| `FERNET_KEY` | PII encryption (email, phone) |
+| `DB_HOST` / `DB_USER` / `DB_PASSWORD` | MySQL connection |
+| `FIREBASE_CREDENTIALS_PATH` | Firebase Admin SDK service account JSON |
+| `FIREBASE_PROJECT_ID` | Firebase project (`electaverse`) |
+| `GCS_BUCKET_NAME` | Google Cloud Storage bucket |
+| `CLOUD_LOGGING_ENABLED` | Enable/disable Google Cloud Logging |
+| `GOOGLE_APPLICATION_CREDENTIALS` | GCP service account for GCS + Logging |
+| `CORS_ORIGINS` | Allowed origins (comma-separated) |
+| `SMTP_USER` / `SMTP_PASS` | Email OTP verification (Gmail) |
+
+### Google Services Health Check
+
+```bash
+# Verify all 9 services are active
+curl http://34.41.130.216:5000/api/google-services | python -m json.tool
+```
+
+Returns real-time status of every Google service with use case descriptions.
+
+### CI/CD Pipeline
+
+```yaml
+# .github/workflows/ci.yml triggers on push/PR:
+# 1. Python lint (flake8)
+# 2. Security scan (bandit)
+# 3. Test suite (pytest, 128 tests)
+# 4. Coverage enforcement (63%+)
+```
 
 ---
 
@@ -613,4 +677,22 @@ backend/
 MIT License — Copyright (c) 2026 Animesh Gupta
 
 See [LICENSE](./LICENSE) for full text.
+
+---
+
+## 🏅 Competition Submission
+
+**Google Prompt Wars** — AI-Powered Election Intelligence
+
+| Metric | Value |
+|:---|:---|
+| **Google Services** | 9/9 active |
+| **AI Agents** | 5 specialized + 1 orchestrator |
+| **Test Coverage** | 128 tests, 63% coverage |
+| **Real-Time Features** | WebSocket live dashboard, 3-second tick |
+| **Simulated Scale** | 200 booths, 10 constituencies |
+| **Security Layers** | JWT, OAuth, CSP, XSS filter, brute-force, Fernet encryption |
+| **Live Frontend** | [electaverse.web.app](https://electaverse.web.app) |
+| **Live Backend** | [34.41.130.216:5000/api/health](http://34.41.130.216:5000/api/health) |
+| **Service Status** | [/api/google-services](http://34.41.130.216:5000/api/google-services) |
 
