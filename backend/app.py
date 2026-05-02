@@ -100,8 +100,14 @@ Talisman(app, content_security_policy=csp, force_https=False)
 from middleware.security_middleware import register_security_middleware
 register_security_middleware(app)
 
-# ── SocketIO ──
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+# Initialize Socket.IO with all allowed origins to fix the 400 Bad Request Error
+# Flask-SocketIO does not support Regex objects, so we use '*' and rely on Flask-CORS for security.
+socketio = SocketIO(
+    app,
+    cors_allowed_origins="*",
+    async_mode='eventlet',
+    ping_timeout=60
+)
 
 # ── Initialize Database ──
 Database.initialize()
