@@ -62,6 +62,7 @@ def handle_preflight():
         # Allow if origin matches our known domains
         allowed = any([
             'trycloudflare.com' in origin,
+            'lhr.life' in origin,
             'electaverse.web.app' in origin,
             'electaverse.firebaseapp.com' in origin,
             'localhost' in origin,
@@ -84,6 +85,7 @@ csp = {
         "'self'",
         'https://generativelanguage.googleapis.com',
         'https://*.trycloudflare.com',
+        'https://*.lhr.life',
         'https://electaverse.web.app',
         'https://electaverse.firebaseapp.com',
         'wss:', 'ws:',

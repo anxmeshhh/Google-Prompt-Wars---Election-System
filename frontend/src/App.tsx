@@ -21,8 +21,8 @@ import './index.css'
 // Smart API URL routing:
 // - localhost:5173 (dev) → localhost:5000 (Flask dev server)
 // - GCE VM (34.41.130.216) → '' (Nginx same-origin proxy)
-// - Firebase Hosting (HTTPS) → Cloudflare tunnel (HTTPS, avoids mixed content)
-const GCE_TUNNEL = 'https://broader-bits-ozone-pointed.trycloudflare.com'
+// - Firebase Hosting (HTTPS) → localhost.run tunnel (HTTPS, avoids mixed content + bypasses Cloudflare interstitial)
+const GCE_TUNNEL = 'https://535fa6e932f1dc.lhr.life'
 const getApiUrl = () => {
   if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL
   if (!import.meta.env.PROD) return 'http://localhost:5000'
