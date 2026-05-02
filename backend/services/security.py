@@ -16,6 +16,16 @@ logger = logging.getLogger('electaverse.security')
 # JWT Token Management
 # ═══════════════════════════════════════════
 
+# In-memory set of revoked JWT tokens (cleared on server restart)
+TOKEN_BLACKLIST: set[str] = set()
+
+
+def blacklist_token(token: str) -> None:
+    """Add a token to the revocation blacklist (for logout)."""
+    TOKEN_BLACKLIST.add(token)
+    logger.info(f'Token blacklisted (total blacklisted: {len(TOKEN_BLACKLIST)})')
+
+
 def create_access_token(user_id: int, role: str) -> str:
     """Generate a short-lived JWT access token."""
     payload = {
@@ -45,6 +55,11 @@ def create_refresh_token(user_id: int) -> str:
 
 def verify_token(token: str) -> dict | None:
     """Verify and decode a JWT token. Returns payload or None."""
+    # Check blacklist first (O(1) lookup)
+    if token in TOKEN_BLACKLIST:
+        logger.debug('JWT token is blacklisted')
+        return None
+
     try:
         payload = jwt.decode(
             token, Config.JWT_SECRET, algorithms=['HS256'],
@@ -60,6 +75,45 @@ def verify_token(token: str) -> dict | None:
     except jwt.InvalidTokenError as e:
         logger.debug(f'Invalid JWT token: {e}')
         return None
+
+
+def check_password_strength(password: str) -> dict:
+    """
+    Check password strength and return feedback.
+    Returns: {strong: bool, score: int (0-4), feedback: str}
+    """
+    import re
+    score = 0
+    feedback = []
+
+    if len(password) >= 6:
+        score += 1
+    else:
+        feedback.append('Use at least 6 characters')
+
+    if len(password) >= 10:
+        score += 1
+
+    if re.search(r'[a-z]', password) and re.search(r'[A-Z]', password):
+        score += 1
+    else:
+        feedback.append('Mix upper and lowercase letters')
+
+    if re.search(r'[0-9]', password):
+        score += 1
+    else:
+        feedback.append('Add at least one number')
+
+    if re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+        score += 1
+    else:
+        feedback.append('Add a special character for extra strength')
+
+    return {
+        'strong': score >= 3,
+        'score': min(score, 4),
+        'feedback': '; '.join(feedback) if feedback else 'Strong password!'
+    }
 
 
 # ═══════════════════════════════════════════
