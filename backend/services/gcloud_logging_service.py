@@ -35,8 +35,8 @@ def init_cloud_logging() -> bool:
         import google.cloud.logging as cloud_logging
 
         client = cloud_logging.Client(project=Config.GCP_PROJECT_ID or None)
-        # Attach Cloud Logging handler to root logger
-        client.setup_logging(log_level=logging.INFO)
+        # Removed client.setup_logging() to prevent background thread crashes 
+        # if the IAM permission 'logging.logEntries.create' is missing.
         _cloud_logger = client.logger('electaverse')
         logger.info(f'Cloud Logging initialized (project={Config.GCP_PROJECT_ID})')
         return True
