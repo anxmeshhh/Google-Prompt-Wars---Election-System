@@ -18,7 +18,10 @@ import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google'
 import { trackEvent } from './firebase'
 import './index.css'
 
-const API = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'http://34.41.130.216:5000' : 'http://localhost:5000')
+// Smart API URL: avoids mixed-content (HTTPS→HTTP) on Firebase Hosting
+// GCE (34.41.130.216): empty string → Nginx proxies /api/ to backend
+// Firebase Hosting: empty string → API calls fail gracefully, use GCE URL for full demo
+const API = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:5000')
 
 // ── Tab Definitions ──
 const TABS = [
