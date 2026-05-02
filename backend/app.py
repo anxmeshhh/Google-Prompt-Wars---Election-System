@@ -48,8 +48,32 @@ limiter = Limiter(
 CORS(app,
      origins=Config.CORS_ORIGINS,
      supports_credentials=True,
-     allow_headers=["Content-Type", "Authorization"],
-     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+     allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+     automatic_options=True)
+
+# ── Explicit OPTIONS preflight handler — bypasses Cloudflare tunnel interstitial ──
+@app.before_request
+def handle_preflight():
+    """Return CORS headers immediately for OPTIONS requests — no auth, no middleware."""
+    from flask import request, Response
+    if request.method == 'OPTIONS':
+        origin = request.headers.get('Origin', '')
+        # Allow if origin matches our known domains
+        allowed = any([
+            'trycloudflare.com' in origin,
+            'electaverse.web.app' in origin,
+            'electaverse.firebaseapp.com' in origin,
+            'localhost' in origin,
+        ])
+        if allowed:
+            resp = Response(status=204)
+            resp.headers['Access-Control-Allow-Origin'] = origin
+            resp.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+            resp.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
+            resp.headers['Access-Control-Allow-Credentials'] = 'true'
+            resp.headers['Access-Control-Max-Age'] = '86400'
+            return resp
 
 csp = {
     'default-src': ["'self'"],
