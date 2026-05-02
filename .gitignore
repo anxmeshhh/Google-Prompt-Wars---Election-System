@@ -36,3 +36,12 @@ __pycache__/
 *.tar.gz
 *.zip
 *.tar
+
+# Firebase credentials (NEVER commit these)
+firebase_json/
+*-adminsdk-*.json
+
+# Coverage
+.coverage
+htmlcov/
+
