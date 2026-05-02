@@ -1,6 +1,6 @@
 """
 ElectaVerse — Battle (Prompt Wars) API Routes
-Placeholder — Module 3 (Agents) will wire the Debate Moderator agent.
+Generates AI-vs-AI policy debates and persists them to MySQL, GCS, and Firebase.
 """
 
 from flask import Blueprint, request, jsonify
@@ -21,14 +21,14 @@ def start_battle():
 
     from agents.debate_moderator import DebateModeratorAgent
     agent = DebateModeratorAgent()
-    
+
     result = agent.generate_debate(topic, persona_a, persona_b)
 
     from db.connection import Database
     import json
     import uuid
 
-    # Insert into database
+    # Insert into MySQL database
     battle_id = str(uuid.uuid4())
     try:
         Database.execute_write(
@@ -39,6 +39,37 @@ def start_battle():
     except Exception as e:
         print(f"Failed to save battle to DB: {e}")
 
+    # Persist to Google Cloud Storage
+    try:
+        from services.gcs_service import save_debate_transcript
+        save_debate_transcript(battle_id, {
+            'topic': topic,
+            'persona_a': persona_a,
+            'persona_b': persona_b,
+            'result': result,
+        })
+    except Exception:
+        pass  # GCS is supplementary — don't fail the request
+
+    # Archive in Firebase Firestore
+    try:
+        from services.firebase_service import save_debate
+        save_debate(battle_id, {
+            'topic': topic,
+            'persona_a': persona_a,
+            'persona_b': persona_b,
+            'winner': result.get('winner', 'Draw'),
+        })
+    except Exception:
+        pass
+
+    # Log to Google Cloud Logging
+    try:
+        from services.gcloud_logging_service import log_agent_action
+        log_agent_action('DebateModerator', 'debate_generated')
+    except Exception:
+        pass
+
     return jsonify({
         'id': battle_id,
         'topic': topic,
@@ -46,3 +77,4 @@ def start_battle():
         'persona_b': persona_b,
         'battle_data': result
     })
+

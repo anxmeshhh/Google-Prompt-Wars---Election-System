@@ -50,10 +50,13 @@ def chat():
 
     # Route through the orchestrator
     from agents.orchestrator import Orchestrator
+    import time as _time
     orchestrator = Orchestrator()
+    _start = _time.time()
     result = orchestrator.route_and_respond(message, live_context, user_role)
+    _duration_ms = int((_time.time() - _start) * 1000)
 
-    # Persist to chat_history
+    # Persist to chat_history (MySQL)
     try:
         Database.execute_write(
             """INSERT INTO chat_history (user_id, user_message, agent_used, ai_response)
@@ -62,6 +65,20 @@ def chat():
         )
     except Exception:
         pass  # Don't fail the response if DB write fails
+
+    # Track agent metric in Firebase
+    try:
+        from services.firebase_service import save_agent_metric
+        save_agent_metric(result['agent'], _duration_ms, user_role, True)
+    except Exception:
+        pass
+
+    # Log to Google Cloud Logging
+    try:
+        from services.gcloud_logging_service import log_agent_action
+        log_agent_action(result['agent'], 'chat_response', _duration_ms)
+    except Exception:
+        pass
 
     return jsonify({
         'agent': result['agent'],

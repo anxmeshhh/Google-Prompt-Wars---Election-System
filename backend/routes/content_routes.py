@@ -252,7 +252,7 @@ def fact_check_claim():
     agent = FactCheckerAgent()
     
     result = agent.verify_claim(claim, live_context)
-    
+
     from db.connection import Database
     try:
         Database.execute_write(
@@ -262,7 +262,21 @@ def fact_check_claim():
         )
     except Exception as e:
         print(f"Failed to save fact check to DB: {e}")
-    
+
+    # Archive to Firebase Firestore
+    try:
+        from services.firebase_service import save_fact_check
+        save_fact_check(user['id'], claim, result)
+    except Exception:
+        pass
+
+    # Persist report to Google Cloud Storage
+    try:
+        from services.gcs_service import save_fact_check_report
+        save_fact_check_report(user['id'], claim, result)
+    except Exception:
+        pass
+
     return jsonify({
         'claim': claim,
         'verdict': result.get('verdict', 'ERROR'),
@@ -294,9 +308,17 @@ def submit_quiz_score():
                VALUES (%s, %s, %s, %s)""",
             (user['id'], score, total, rank)
         )
-        return jsonify({'success': True})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+    # Save to Firebase leaderboard
+    try:
+        from services.firebase_service import save_quiz_score
+        save_quiz_score(user['id'], user.get('name', 'Anonymous'), score, total, rank)
+    except Exception:
+        pass
+
+    return jsonify({'success': True})
 
 QUIZ_BANK = [
     {
@@ -335,6 +357,25 @@ QUIZ_BANK = [
         "explanation": "While EPIC is preferred, the ECI accepts several other alternative photo identity documents like Aadhar, PAN, Driving License, etc., provided your name is on the electoral roll."
     }
 ]
+
+
+@content_bp.route('/api/quiz/leaderboard', methods=['GET'])
+def get_quiz_leaderboard():
+    """Return the global Voter IQ quiz leaderboard from Firebase Firestore."""
+    try:
+        from services.firebase_service import get_quiz_leaderboard
+        leaderboard = get_quiz_leaderboard(limit=20)
+        return jsonify({'leaderboard': leaderboard, 'source': 'firebase'})
+    except Exception:
+        # Fallback to MySQL
+        from db.connection import Database
+        rows = Database.execute(
+            """SELECT u.name, v.score, v.total_questions, v.rank_title, v.created_at
+               FROM voter_iq_scores v JOIN users u ON v.user_id = u.id
+               ORDER BY v.score DESC LIMIT 20"""
+        )
+        return jsonify({'leaderboard': rows, 'source': 'mysql'})
+
 
 @content_bp.route('/api/quiz/questions', methods=['GET'])
 def get_quiz_questions():

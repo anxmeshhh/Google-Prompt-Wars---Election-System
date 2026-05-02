@@ -75,3 +75,15 @@ def get_queue_analytics():
             distribution['80+'] += 1
 
     return jsonify({'distribution': distribution, 'total_booths': len(booths)})
+
+
+@analytics_bp.route('/api/analytics/agent-metrics', methods=['GET'])
+def get_agent_metrics():
+    """Return AI agent usage statistics from Firebase Firestore."""
+    try:
+        from services.firebase_service import get_agent_metrics_summary
+        metrics = get_agent_metrics_summary()
+        return jsonify(metrics)
+    except Exception as e:
+        return jsonify({'available': False, 'error': str(e), 'agents': {}})
+

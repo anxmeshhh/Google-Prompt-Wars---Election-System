@@ -63,6 +63,13 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 # ── Initialize Database ──
 Database.initialize()
 
+# ── Initialize Google Cloud Services ──
+from services.firebase_service import init_firebase
+from services.gcloud_logging_service import init_cloud_logging
+init_firebase()
+init_cloud_logging()
+logger.info('Google Cloud services initialized')
+
 # ── Initialize Simulation Engine ──
 engine = SimulationEngine(socketio=socketio)
 
