@@ -44,12 +44,26 @@ limiter = Limiter(
     storage_uri="memory://"
 )
 
+# ── CORS — must be FIRST, before Talisman intercepts OPTIONS preflights ──
+CORS(app,
+     origins=Config.CORS_ORIGINS,
+     supports_credentials=True,
+     allow_headers=["Content-Type", "Authorization"],
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+
 csp = {
     'default-src': ["'self'"],
     'script-src': ["'self'", "'unsafe-inline'"],
     'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
     'font-src': ["'self'", 'https://fonts.gstatic.com'],
-    'connect-src': ["'self'", 'https://generativelanguage.googleapis.com', 'wss:', 'ws:'],
+    'connect-src': [
+        "'self'",
+        'https://generativelanguage.googleapis.com',
+        'https://*.trycloudflare.com',
+        'https://electaverse.web.app',
+        'https://electaverse.firebaseapp.com',
+        'wss:', 'ws:',
+    ],
     'img-src': ["'self'", 'data:', 'https:'],
 }
 Talisman(app, content_security_policy=csp, force_https=False)
@@ -57,9 +71,6 @@ Talisman(app, content_security_policy=csp, force_https=False)
 # ── Security Middleware ──
 from middleware.security_middleware import register_security_middleware
 register_security_middleware(app)
-
-# ── CORS ──
-CORS(app, origins=Config.CORS_ORIGINS)
 
 # ── SocketIO ──
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
