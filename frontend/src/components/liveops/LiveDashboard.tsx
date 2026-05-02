@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { AlertTriangle, Users, MapPin, Search, Play, Pause, RotateCcw, FastForward } from 'lucide-react'
 
-const API = import.meta.env.PROD ? '' : 'http://localhost:5000'
+import { API } from '../../config'
 
 interface Booth {
   id: string

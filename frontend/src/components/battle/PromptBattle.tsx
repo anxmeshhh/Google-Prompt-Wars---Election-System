@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Swords, Loader2, Sparkles, Scale, BookOpen, Brain, Trophy } from 'lucide-react'
 
-const API = import.meta.env.PROD ? '' : 'http://localhost:5000'
+import { API } from '../../config'
 
 const PERSONAS = [
   "The Technocrat", "The Traditionalist", "The Economist", 

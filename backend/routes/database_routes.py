@@ -13,14 +13,11 @@ from utils.validators import validate_table_name
 db_bp = Blueprint('database', __name__)
 
 
-def _require_admin(req) -> dict | None:
-    """Extract and validate user from request. Requires 'official' role."""
+def _require_auth(req) -> dict | None:
+    """Extract and validate user from request. Any authenticated user can access."""
     token = req.headers.get('Authorization', '').replace('Bearer ', '')
     user = _get_user_by_token(token)
     if not user:
-        return None
-    # Admin check — only officials can access database explorer
-    if user.get('role') != 'official':
         return None
     return user
 
@@ -28,9 +25,9 @@ def _require_admin(req) -> dict | None:
 @db_bp.route('/api/database/tables', methods=['GET'])
 def get_tables():
     """Return all tables in the MySQL database. Requires admin authentication."""
-    user = _require_admin(request)
+    user = _require_auth(request)
     if not user:
-        return jsonify({'error': 'Admin authentication required'}), 403
+        return jsonify({'error': 'Authentication required'}), 403
 
     try:
         rows = Database.execute("SHOW TABLES")
@@ -62,9 +59,9 @@ def query_table():
     Table name is validated against a strict whitelist to
     prevent any form of SQL injection. Admin-only access.
     """
-    user = _require_admin(request)
+    user = _require_auth(request)
     if not user:
-        return jsonify({'error': 'Admin authentication required'}), 403
+        return jsonify({'error': 'Authentication required'}), 403
 
     table = request.args.get('table', '').strip()
 

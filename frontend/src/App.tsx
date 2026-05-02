@@ -18,20 +18,7 @@ import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google'
 import { trackEvent } from './firebase'
 import './index.css'
 
-// Smart API URL routing:
-// - localhost:5173 (dev) → localhost:5000 (Flask dev server)
-// - GCE VM (34.41.130.216) → '' (Nginx same-origin proxy)
-// - Firebase Hosting (HTTPS) → Native GCE HTTPS endpoint (sslip.io with Let's Encrypt)
-const GCE_TUNNEL = 'https://34-41-130-216.sslip.io'
-const getApiUrl = () => {
-  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL
-  if (!import.meta.env.PROD) return 'http://localhost:5000'
-  const host = window.location.hostname
-  if (host === 'electaverse.web.app' || host === 'electaverse.firebaseapp.com') return GCE_TUNNEL
-  if (host.endsWith('.trycloudflare.com')) return ''  // Already on tunnel
-  return ''  // GCE same-origin
-}
-const API = getApiUrl()
+import { API } from './config'
 
 // ── Tab Definitions ──
 const TABS = [
@@ -264,7 +251,7 @@ function App() {
             {activeTab === 'battle' && <PromptBattle />}
             {activeTab === 'quiz' && <VoterIQ />}
             {activeTab === 'liveops' && <LiveDashboard token={token} />}
-            {activeTab === 'database' && <DataHub />}
+            {activeTab === 'database' && <DataHub token={token} />}
           </motion.div>
         </AnimatePresence>
       </main>

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Database, Search, Table2, RefreshCcw, Loader2 } from 'lucide-react'
 
-const API = import.meta.env.PROD ? '' : 'http://localhost:5000'
+import { API } from '../../config'
 
 interface TableData {
   table: string
@@ -10,7 +10,7 @@ interface TableData {
   data: any[]
 }
 
-export default function DataHub() {
+export default function DataHub({ token }: { token: string | null }) {
   const [tables, setTables] = useState<string[]>([])
   const [selectedTable, setSelectedTable] = useState<string | null>(null)
   const [tableData, setTableData] = useState<TableData | null>(null)
@@ -26,7 +26,9 @@ export default function DataHub() {
   const fetchTables = async () => {
     setLoadingTables(true)
     try {
-      const res = await fetch(`${API}/api/database/tables`)
+      const res = await fetch(`${API}/api/database/tables`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
       const data = await res.json()
       setTables(data.tables || [])
       if (data.tables && data.tables.length > 0 && !selectedTable) {
@@ -49,7 +51,9 @@ export default function DataHub() {
   const fetchTableData = async (tableName: string) => {
     setLoadingData(true)
     try {
-      const res = await fetch(`${API}/api/database/query?table=${tableName}`)
+      const res = await fetch(`${API}/api/database/query?table=${tableName}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
       const data = await res.json()
       if (data.columns && data.data) {
         setTableData(data)
