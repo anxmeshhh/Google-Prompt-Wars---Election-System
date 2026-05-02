@@ -48,3 +48,14 @@ class Config:
     DB_USER = os.getenv('DB_USER', 'root')
     DB_PASSWORD = os.getenv('DB_PASSWORD', '')
     DB_NAME = os.getenv('DB_NAME', 'electaverse')
+
+    # ── Google Cloud Platform ──
+    GCP_PROJECT_ID = os.getenv('GCP_PROJECT_ID', 'agentroute-493507')
+    GCS_BUCKET_NAME = os.getenv('GCS_BUCKET_NAME', '')
+
+    # ── Firebase (Spark plan — free) ──
+    FIREBASE_CREDENTIALS_PATH = os.getenv('FIREBASE_CREDENTIALS_PATH', '')
+    FIREBASE_PROJECT_ID = os.getenv('FIREBASE_PROJECT_ID', os.getenv('GCP_PROJECT_ID', 'agentroute-493507'))
+
+    # ── Google Cloud Logging ──
+    CLOUD_LOGGING_ENABLED = os.getenv('CLOUD_LOGGING_ENABLED', 'false').lower() == 'true'
