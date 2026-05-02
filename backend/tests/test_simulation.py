@@ -67,7 +67,8 @@ class TestElectionClock:
         assert clock.current_hour == 7
         assert clock.current_minute == 0
         assert clock.total_ticks == 0
-        assert clock.phase == 'PRE_POLL'
+        # start_hour=7 falls in ACTIVE_POLLING range (7 <= h < 18)
+        assert clock.phase == 'ACTIVE_POLLING'
 
     def test_set_time(self):
         """set_time should jump to the specified hour."""
