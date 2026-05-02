@@ -325,13 +325,81 @@ a:hover { color: var(--color-accent); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
 
-/* ── Responsive ── */
-@media (max-width: 768px) {
-  .section { padding: 24px 16px; }
-  .nav-tabs { gap: 2px; }
-  .nav-tab { padding: 6px 12px; font-size: 12px; }
+/* ── Responsive: Tablet ── */
+@media (max-width: 1024px) {
+  .section { padding: 32px 20px; }
+  .section-header { margin-bottom: 28px; }
 }
 
+/* ── Responsive: Mobile ── */
+@media (max-width: 768px) {
+  .section { padding: 20px 14px; }
+  .section-header { margin-bottom: 20px; }
+  .section-header h2 { font-size: 1.4rem; }
+  .section-header p { font-size: 13px; }
+
+  /* Tabs: horizontal scroll with smaller text */
+  .nav-tabs {
+    gap: 2px;
+    padding: 3px;
+    margin: 8px -14px 0;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+  .nav-tab {
+    padding: 6px 10px;
+    font-size: 11px;
+    min-width: auto;
+  }
+
+  /* Buttons: larger touch targets */
+  .btn {
+    padding: 12px 20px;
+    font-size: 14px;
+  }
+
+  /* Badges */
+  .badge { font-size: 10px; padding: 2px 8px; }
+
+  /* Glass cards: tighter padding */
+  .glass { padding: 16px; }
+  .glass-strong { padding: 16px; }
+
+  /* Section headers */
+  h1 { font-size: clamp(1.5rem, 6vw, 2.5rem); }
+  h2 { font-size: clamp(1.2rem, 4vw, 1.75rem); }
+  h3 { font-size: clamp(1rem, 3vw, 1.25rem); }
+}
+
+/* ── Responsive: Small Mobile ── */
+@media (max-width: 480px) {
+  .section { padding: 16px 12px; }
+
+  .nav-tab {
+    padding: 5px 8px;
+    font-size: 10px;
+  }
+
+  .btn {
+    padding: 10px 16px;
+    font-size: 13px;
+    gap: 6px;
+  }
+
+  h1 { font-size: 1.4rem; }
+  h2 { font-size: 1.15rem; }
+  h3 { font-size: 1rem; }
+
+  /* Hide accessibility controls on very small screens */
+  .a11y-controls { display: none !important; }
+}
+
+/* ── Mobile Navbar Layout ── */
+@media (max-width: 640px) {
+  /* Make user info compact */
+  .user-name-text { display: none; }
+}
 /* ═══════════════════════════════════════════
    Accessibility Enhancements
    ═══════════════════════════════════════════ */

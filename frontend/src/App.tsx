@@ -15,6 +15,7 @@ import PromptBattle from './components/battle/PromptBattle'
 import VoterIQ from './components/quiz/VoterIQ'
 import DataHub from './components/datahub/DataHub'
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google'
+import { trackEvent } from './firebase'
 import './index.css'
 
 const API = import.meta.env.PROD ? '' : 'http://localhost:5000'
@@ -98,6 +99,7 @@ function App() {
     localStorage.setItem('electaverse_token', authToken)
     setToken(authToken)
     setUser(userData)
+    trackEvent('login', { method: 'email', role: userData.role })
   }, [])
 
   const handleLogout = useCallback(() => {
@@ -144,7 +146,7 @@ function App() {
       }}>
         <div style={{
           maxWidth: 1200, margin: '0 auto',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: 24 }}>🗳️</span>
@@ -154,9 +156,9 @@ function App() {
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
             }}>ElectaVerse</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            {/* Accessibility Menu */}
-            <div style={{ display: 'flex', gap: 4, marginRight: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+            {/* Accessibility Menu - hidden on small screens */}
+            <div className="a11y-controls" style={{ display: 'flex', gap: 4 }}>
               <button onClick={() => setHighContrast(!highContrast)} title="Toggle High Contrast" style={{
                 background: 'none', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text-primary)', padding: '2px 6px', cursor: 'pointer', fontSize: 12
               }}>
@@ -199,14 +201,14 @@ function App() {
               }}>
                 {user.name.charAt(0).toUpperCase()}
               </div>
-              <div style={{ fontSize: 13 }}>
+              <div className="user-name-text" style={{ fontSize: 13 }}>
                 <div style={{ color: 'var(--text-primary)', fontWeight: 500, lineHeight: 1.2 }}>{user.name}</div>
                 <div style={{ color: 'var(--text-muted)', fontSize: 10, textTransform: 'uppercase' }}>{user.role}</div>
               </div>
               <button onClick={handleLogout} style={{
                 background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)',
                 padding: 4, display: 'flex',
-              }} title="Logout">
+              }} title="Logout" aria-label="Logout">
                 <LogOut size={14} />
               </button>
             </div>
@@ -221,7 +223,7 @@ function App() {
                 aria-controls={`panel-${tab.id}`}
                 id={`tab-${tab.id}`}
                 className={`nav-tab ${activeTab === tab.id ? 'active' : ''}`}
-                onClick={() => setActiveTab(tab.id)}>
+                onClick={() => { setActiveTab(tab.id); trackEvent('tab_switch', { tab: tab.id }) }}>
                 <tab.icon size={14} aria-hidden="true" style={{ marginRight: 4, verticalAlign: -2 }} />{tab.label}
               </button>
             ))}
@@ -342,7 +344,7 @@ function AuthPage({ onLogin }: { onLogin: (user: UserData, token: string) => voi
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.5 }}
         className="glass-strong"
-        style={{ width: '100%', maxWidth: 440, padding: 40, borderRadius: 'var(--radius-xl)' }}
+        style={{ width: '100%', maxWidth: 440, padding: 'clamp(24px, 6vw, 40px)', borderRadius: 'var(--radius-xl)' }}
       >
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
