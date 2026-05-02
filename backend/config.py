@@ -22,8 +22,8 @@ class Config:
         'CORS_ORIGINS',
         'http://localhost:5173,https://electaverse.web.app,https://electaverse.firebaseapp.com'
     ).split(',')
-    # Allow all Cloudflare and localhost.run tunnel subdomains dynamically using Regex
-    CORS_ORIGINS.append(re.compile(r"https://.*\.(trycloudflare\.com|lhr\.life)"))
+    # Allow all Cloudflare, localhost.run, and sslip.io tunnel subdomains dynamically using Regex
+    CORS_ORIGINS.append(re.compile(r"https://.*\.(trycloudflare\.com|lhr\.life|sslip\.io)"))
 
     # ── AI Services ──
     GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')

@@ -63,6 +63,7 @@ def handle_preflight():
         allowed = any([
             'trycloudflare.com' in origin,
             'lhr.life' in origin,
+            'sslip.io' in origin,
             'electaverse.web.app' in origin,
             'electaverse.firebaseapp.com' in origin,
             'localhost' in origin,
@@ -86,6 +87,7 @@ csp = {
         'https://generativelanguage.googleapis.com',
         'https://*.trycloudflare.com',
         'https://*.lhr.life',
+        'https://*.sslip.io',
         'https://electaverse.web.app',
         'https://electaverse.firebaseapp.com',
         'wss:', 'ws:',
