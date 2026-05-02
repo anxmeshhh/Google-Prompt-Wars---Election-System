@@ -17,7 +17,12 @@ class Config:
 
     # ── Core ──
     SECRET_KEY = os.getenv('SECRET_KEY', 'electaverse-secret-key-dev')
-    CORS_ORIGINS = os.getenv('CORS_ORIGINS', 'http://localhost:5173').split(',')
+    CORS_ORIGINS = os.getenv(
+        'CORS_ORIGINS',
+        'http://localhost:5173,https://electaverse.web.app,https://electaverse.firebaseapp.com'
+    ).split(',')
+    # Allow all Cloudflare tunnel subdomains (URL changes per restart)
+    CORS_ORIGINS.append('https://*.trycloudflare.com')
 
     # ── AI Services ──
     GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')

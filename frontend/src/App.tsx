@@ -18,10 +18,20 @@ import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google'
 import { trackEvent } from './firebase'
 import './index.css'
 
-// Smart API URL: avoids mixed-content (HTTPS→HTTP) on Firebase Hosting
-// GCE (34.41.130.216): empty string → Nginx proxies /api/ to backend
-// Firebase Hosting: empty string → API calls fail gracefully, use GCE URL for full demo
-const API = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:5000')
+// Smart API URL routing:
+// - localhost:5173 (dev) → localhost:5000 (Flask dev server)
+// - GCE VM (34.41.130.216) → '' (Nginx same-origin proxy)
+// - Firebase Hosting (HTTPS) → Cloudflare tunnel (HTTPS, avoids mixed content)
+const GCE_TUNNEL = 'https://broader-bits-ozone-pointed.trycloudflare.com'
+const getApiUrl = () => {
+  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL
+  if (!import.meta.env.PROD) return 'http://localhost:5000'
+  const host = window.location.hostname
+  if (host === 'electaverse.web.app' || host === 'electaverse.firebaseapp.com') return GCE_TUNNEL
+  if (host.endsWith('.trycloudflare.com')) return ''  // Already on tunnel
+  return ''  // GCE same-origin
+}
+const API = getApiUrl()
 
 // ── Tab Definitions ──
 const TABS = [
