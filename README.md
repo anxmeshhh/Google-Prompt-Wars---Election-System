@@ -322,9 +322,97 @@ The simulation engine is the **deterministic backbone** — pure Python math, ze
 | **Animations** | Framer Motion | Declarative page transitions, micro-animations |
 | **Icons** | Lucide React | Consistent, tree-shakeable icon set |
 | **Backend** | Python Flask + SocketIO | Lightweight, WebSocket-native, fast prototyping |
-| **AI** | Google Gemini (gemini-2.0-flash) | Fast, multimodal, structured output support |
+| **AI** | Google Gemini (gemini-2.5-flash) | Fast, multimodal, structured output support |
 | **Real-Time** | Flask-SocketIO + socket.io-client | Bidirectional WebSocket for live data |
 | **Simulation** | Pure Python (math, random) | Deterministic, zero dependencies, offline-capable |
+| **Database** | MySQL 8.0 | Transactional data, user management, simulation config |
+| **Auth** | JWT (dual-token) + Google OAuth 2.0 | Stateless auth with refresh tokens and social login |
+| **Encryption** | Fernet (cryptography) | PII data encryption at rest |
+
+---
+
+## ☁️ Google Cloud Services Integration
+
+ElectaVerse integrates **7+ Google services** for a production-grade cloud-native architecture:
+
+| # | Service | Integration Point | Status |
+|:--|:---|:---|:---|
+| 1 | **Google Compute Engine** | Production deployment on `electaverse-server` (us-central1-a) | ✅ Active |
+| 2 | **Google Gemini API** | 5 AI agents + token counting + model info + usage tracking | ✅ Active |
+| 3 | **Google OAuth 2.0** | Social login with `google-auth` token verification | ✅ Active |
+| 4 | **Firebase Firestore** | Agent metrics, quiz leaderboard, fact-check archive, debate archive | ✅ Integrated |
+| 5 | **Google Cloud Storage** | Debate transcripts, incident snapshots, fact-check reports | ✅ Integrated |
+| 6 | **Google Cloud Logging** | Structured audit logs for auth, agents, security, incidents | ✅ Integrated |
+| 7 | **Google Fonts** | Inter (body) + Outfit (headings) loaded via Google Fonts CDN | ✅ Active |
+
+### Graceful Degradation
+
+All Google Cloud services are designed with a **local fallback** pattern:
+- **Firebase unavailable?** → Functions return empty defaults (no crash)
+- **GCS unavailable?** → Falls back to local filesystem storage
+- **Cloud Logging disabled?** → Falls back to Python's standard logging
+- **Gemini API down?** → Groq LLM fallback, then helpful error message
+- **No API keys at all?** → Dashboard + simulation still work fully
+
+---
+
+## 🔐 Security Architecture
+
+### Authentication Flow
+
+```
+User Login → Brute-force check → Password verify → JWT access + refresh tokens
+     ↓                                                        ↓
+  5 failures → 15 min lockout                     Token blacklist on logout
+     ↓                                                        ↓
+  Cloud Logging alert                              Immediate revocation
+```
+
+### Security Layers
+
+| Layer | Implementation |
+|:---|:---|
+| **Transport** | Flask-Talisman CSP, X-Content-Type-Options, X-Frame-Options, X-XSS-Protection |
+| **Input** | XSS sanitization middleware, email/password validators, table name whitelist |
+| **Auth** | JWT dual-token, brute-force lockout (5 attempts/15 min), PII encryption (Fernet) |
+| **Audit** | Request IDs on every response, Cloud Logging for auth/security events |
+| **Database** | Parameterized queries only, admin-only access for database explorer |
+| **CI/CD** | Bandit security scanner, flake8 linting, coverage enforcement |
+
+### Middleware Pipeline
+
+Every request passes through:
+1. **Request ID injection** — UUID attached for audit trail
+2. **XSS sanitization** — JSON payloads scanned for `<script>`, `onerror=`, etc.
+3. **Security headers** — 6 defensive headers added to every response
+4. **Request logging** — API requests logged with IP, method, path, status
+
+---
+
+## 🧪 Testing Suite
+
+**86 tests** across 6 test files with **51% code coverage**:
+
+| Test File | Tests | Focus Area |
+|:---|:---|:---|
+| `test_simulation.py` | 18 | Election clock phases, queue dynamics, incident auto-resolve |
+| `test_models.py` | 15 | Booth/Incident serialization, status computation, factory functions |
+| `test_agents.py` | 12 | All 5 AI agents with mocked Gemini, error handling |
+| `test_google_services.py` | 18 | GCS local fallback, Firebase degradation, Cloud Logging no-crash |
+| `test_security_hardening.py` | 20 | JWT blacklist, password strength, validators, security headers |
+| `test_api.py` + `test_security.py` | 3+ | Existing integration and security tests |
+
+```bash
+# Run all tests with coverage
+cd backend
+pytest tests/ -v --cov=. --cov-report=term-missing
+
+# Run specific test category
+pytest tests/test_simulation.py -v
+
+# Security scan
+bandit -r . -x tests/ -ll
+```
 
 ---
 
@@ -333,6 +421,7 @@ The simulation engine is the **deterministic backbone** — pure Python math, ze
 ### Prerequisites
 - Python 3.10+
 - Node.js 18+
+- MySQL 8.0
 - Google Gemini API Key ([Get one free](https://aistudio.google.com/apikey))
 
 ### Setup
@@ -343,8 +432,8 @@ git clone https://github.com/anxmeshhh/Google-Prompt-Wars---Election-System.git
 cd Google-Prompt-Wars---Election-System
 
 # 2. Create environment file
-cp .env.example .env
-# Edit .env and add your GEMINI_API_KEY
+cp backend/.env.example backend/.env
+# Edit .env and add your GEMINI_API_KEY, DB credentials, etc.
 
 # 3. Start the Backend
 cd backend
@@ -361,6 +450,97 @@ npm run dev
 
 > **Note:** The real-time dashboard and simulation engine work without an API key. Only AI features (chat, fact-check, battles) require the Gemini API key.
 
+### Optional: Google Cloud Services
+
+```bash
+# Firebase (free Spark plan)
+# 1. Create project at https://console.firebase.google.com
+# 2. Download service account key JSON
+# 3. Set FIREBASE_CREDENTIALS_PATH in .env
+
+# Google Cloud Storage
+# 1. Create bucket in GCP Console
+# 2. Set GCS_BUCKET_NAME in .env
+
+# Cloud Logging
+# Set CLOUD_LOGGING_ENABLED=true in .env (requires GCP credentials)
+```
+
+---
+
+## 🐳 Deployment
+
+### Docker
+
+```bash
+# Backend
+docker build -t electaverse-backend ./backend
+docker run -p 5000:5000 --env-file backend/.env electaverse-backend
+
+# Frontend
+docker build -t electaverse-frontend ./frontend
+docker run -p 80:80 electaverse-frontend
+```
+
+### Production (Google Compute Engine)
+
+Currently deployed on:
+- **Instance**: `electaverse-server`
+- **Zone**: `us-central1-a`
+- **Project**: `agentroute-493507`
+- **URL**: `http://34.41.130.216`
+
+---
+
+## 📁 Project Structure
+
+```
+backend/
+├── app.py                          # Flask + SocketIO entry point
+├── config.py                       # Environment & simulation parameters
+├── pyproject.toml                  # Python project metadata & tool config
+├── requirements.txt                # Pinned dependencies
+├── agents/                         # 🧠 Agentic AI Layer (5 agents + orchestrator)
+├── services/                       # 🔧 Service Layer
+│   ├── gemini_service.py           # Gemini API (token counting, usage tracking)
+│   ├── firebase_service.py         # Firebase Firestore (metrics, leaderboard)
+│   ├── gcs_service.py              # Google Cloud Storage (artifact persistence)
+│   ├── gcloud_logging_service.py   # Cloud Logging (structured audit logs)
+│   ├── security.py                 # JWT tokens, blacklist, Fernet encryption
+│   └── email_service.py            # SMTP OTP verification
+├── middleware/                     # 🛡️ Security Middleware
+│   └── security_middleware.py      # Request IDs, XSS filter, headers, audit
+├── utils/                          # 🔧 Shared Utilities
+│   └── validators.py              # Email, password, table name validation
+├── simulation/                     # 🎮 Deterministic Real-Time Engine
+│   ├── engine.py                   # Master controller (background thread)
+│   ├── election_clock.py           # Day phases: PRE_POLL → COUNTING
+│   ├── queue_dynamics.py           # Poisson arrivals + throughput drain
+│   └── incident_injector.py        # Stochastic incident generation
+├── models/                         # 📦 Data Models
+│   ├── booth.py                    # Booth dataclass (200 booths, 10 cities)
+│   └── incident.py                 # Incident dataclass (6 types, 4 severities)
+├── routes/                         # 🌐 API Routes
+│   ├── auth_routes.py              # Register, login, OAuth, OTP, brute-force
+│   ├── chat_routes.py              # AI chat with agent routing
+│   ├── battle_routes.py            # Prompt Wars debates
+│   ├── content_routes.py           # Fact-check, quiz, leaderboard
+│   ├── analytics_routes.py         # Turnout, incidents, agent metrics
+│   ├── database_routes.py          # Admin-only database explorer
+│   └── simulation_routes.py        # Pause/resume/reset/jump controls
+├── db/                             # 💾 Database Layer
+│   ├── connection.py               # MySQL connection pooling
+│   ├── seed.py                     # Schema & seed data
+│   └── seed_content.py             # Timeline, voter guide content
+└── tests/                          # 🧪 Test Suite (86 tests)
+    ├── conftest.py                 # Shared fixtures (auth, mocks)
+    ├── test_simulation.py          # Engine tests
+    ├── test_models.py              # Data model tests
+    ├── test_agents.py              # AI agent tests
+    ├── test_google_services.py     # GCS/Firebase/Logging tests
+    └── test_security_hardening.py  # Security tests
+```
+
 ---
 
 ## 📄 License
@@ -368,3 +548,4 @@ npm run dev
 MIT License — Copyright (c) 2026 Animesh Gupta
 
 See [LICENSE](./LICENSE) for full text.
+

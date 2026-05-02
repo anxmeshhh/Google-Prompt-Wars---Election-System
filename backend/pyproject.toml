@@ -1,0 +1,37 @@
+[project]
+name = "electaverse"
+version = "1.0.0"
+description = "AI-Powered Election Intelligence Platform — Real-time booth monitoring, fact-checking, and Prompt Wars debates powered by Google Gemini."
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "Animesh Gupta", email = "theanimeshgupta@gmail.com"}]
+keywords = ["election", "ai", "gemini", "democracy", "simulation", "google-cloud"]
+
+[tool.black]
+line-length = 120
+target-version = ['py312']
+
+[tool.isort]
+profile = "black"
+line_length = 120
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+
+[tool.bandit]
+exclude_dirs = ["tests"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short --strict-markers"
+markers = [
+    "slow: marks tests as slow",
+    "integration: marks integration tests",
+    "unit: marks unit tests",
+]

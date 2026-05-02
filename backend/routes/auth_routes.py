@@ -323,8 +323,9 @@ def send_otp():
     data = request.get_json()
     email = data.get('email', '').strip().lower()
 
-    if not email or not _EMAIL_RE.match(email):
-        return jsonify({'error': 'Valid email is required'}), 400
+    email_valid, email_err = validate_email(email)
+    if not email_valid:
+        return jsonify({'error': email_err or 'Valid email is required'}), 400
 
     otp = generate_otp(email)
     sent = send_otp_email(email, otp)

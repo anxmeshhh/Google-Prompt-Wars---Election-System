@@ -24,39 +24,73 @@ jobs:
           --health-retries=3
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Set up Python 3.12
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: "3.12"
+
     - name: Install dependencies
       run: |
         cd backend
         python -m pip install --upgrade pip
-        pip install -r requirements.txt pytest flake8 black
+        pip install -r requirements.txt pytest-cov bandit
+
     - name: Lint with flake8
       run: |
         cd backend
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-    - name: Test with pytest
+        flake8 . --count --statistics --max-line-length=120 --max-complexity=15
+
+    - name: Security scan with bandit
       run: |
         cd backend
-        pytest tests/
+        bandit -r . -x tests/ -ll --format json -o bandit-report.json || true
+        bandit -r . -x tests/ -ll
+
+    - name: Test with coverage
+      env:
+        DB_HOST: 127.0.0.1
+        DB_USER: root
+        DB_PASSWORD: root
+        DB_NAME: electaverse
+      run: |
+        cd backend
+        pytest tests/ -v --cov=. --cov-report=term-missing --cov-fail-under=30
+
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: coverage-report
+        path: backend/.coverage
 
   build-frontend:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Use Node.js
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: '20.x'
+
     - name: Install dependencies
       run: |
         cd frontend
         npm ci
-    - name: Build and lint
+
+    - name: Lint
       run: |
         cd frontend
         npm run lint
+
+    - name: Build production bundle
+      run: |
+        cd frontend
         npm run build
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-build
+        path: frontend/dist
+
