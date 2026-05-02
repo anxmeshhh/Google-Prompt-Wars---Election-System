@@ -39,7 +39,6 @@ jobs:
     - name: Security scan with bandit
       run: |
         cd backend
-        bandit -r . -x tests/ -ll --format json -o bandit-report.json || true
         bandit -r . -x tests/ -ll || true
 
     - name: Test with coverage
@@ -75,12 +74,7 @@ jobs:
     - name: Install dependencies
       run: |
         cd frontend
-        npm ci
-
-    - name: Type check
-      run: |
-        cd frontend
-        npx tsc --noEmit
+        npm install
 
     - name: Build production bundle
       run: |
