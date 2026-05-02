@@ -134,23 +134,22 @@ class TestBattleEndpoint:
 # ─────────────────────────────────────────────
 
 class TestDatabaseRoutes:
-    """Tests for the database exploration API."""
+    """Tests for the database exploration API (admin-only access)."""
 
     def test_tables_endpoint(self, client):
-        """GET /api/database/tables should return list."""
+        """GET /api/database/tables without admin auth should return 403."""
         rv = client.get('/api/database/tables')
-        assert rv.status_code == 200
-        assert 'tables' in rv.get_json()
+        assert rv.status_code == 403
 
     def test_query_missing_table(self, client):
-        """Query without table param should return 400."""
+        """Query without admin auth should return 403."""
         rv = client.get('/api/database/query')
-        assert rv.status_code == 400
+        assert rv.status_code == 403
 
     def test_query_invalid_table(self, client):
-        """Query with SQL-injection-like table name should return 400."""
+        """Query with SQL-injection-like table name should return 403 (no auth)."""
         rv = client.get('/api/database/query?table=; DROP TABLE users;')
-        assert rv.status_code == 400
+        assert rv.status_code == 403
 
 
 # ─────────────────────────────────────────────
