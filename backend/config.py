@@ -5,6 +5,7 @@ All secrets are loaded from environment — never hardcoded.
 """
 
 import os
+import re
 from dotenv import load_dotenv
 
 # Load .env — check backend/ dir first, then project root
@@ -21,8 +22,8 @@ class Config:
         'CORS_ORIGINS',
         'http://localhost:5173,https://electaverse.web.app,https://electaverse.firebaseapp.com'
     ).split(',')
-    # Allow all Cloudflare tunnel subdomains (URL changes per restart)
-    CORS_ORIGINS.append('https://*.trycloudflare.com')
+    # Allow all Cloudflare tunnel subdomains dynamically using Regex
+    CORS_ORIGINS.append(re.compile(r"https://.*\.trycloudflare\.com"))
 
     # ── AI Services ──
     GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
