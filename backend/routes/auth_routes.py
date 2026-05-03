@@ -260,8 +260,14 @@ def google_login():
             request_obj = Urllib3Request(http)
             return id_token.verify_oauth2_token(token, request_obj, client_id)
         
-        # Run in native OS thread so blocking HTTPS cert-fetch doesn't stall eventlet
-        idinfo = eventlet.tpool.execute(_verify)
+        # Run in a real native OS thread via ThreadPoolExecutor.
+        # This is required because urllib3 uses C-level SSL which cannot be
+        # monkey-patched by Eventlet — it MUST run outside the greenlet event loop.
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(_verify)
+            idinfo = future.result(timeout=10)
+
         email = idinfo['email'].lower()
         name = idinfo.get('name', email.split('@')[0])
         google_sub = idinfo.get('sub', '')
@@ -269,6 +275,9 @@ def google_login():
     except (ValueError, TransportError) as e:
         logger.warning(f'Invalid Google token attempt: {e}')
         return jsonify({'error': 'Invalid Google token'}), 401
+    except concurrent.futures.TimeoutError:
+        logger.error('Google cert fetch timed out')
+        return jsonify({'error': 'Authentication timed out, please try again'}), 503
     except Exception as e:
         logger.error(f'Unexpected Google auth error: {e}')
         return jsonify({'error': 'Authentication service error, please try again'}), 500
