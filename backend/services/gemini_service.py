@@ -17,7 +17,7 @@ from groq import Groq
 def _run_in_thread(fn, *args, **kwargs):
     """Run a blocking function in a real thread to avoid freezing eventlet."""
     try:
-        import eventlet
+        import eventlet.tpool
         return eventlet.tpool.execute(fn, *args, **kwargs)
     except (ImportError, RuntimeError):
         # Fallback for non-eventlet environments (e.g., tests)
