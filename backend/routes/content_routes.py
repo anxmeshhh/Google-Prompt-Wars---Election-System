@@ -179,7 +179,7 @@ def get_voter_guide():
     }
 
     # Location-Based Live Context: Assign a booth based on user's constituency
-    if user.get('constituency_id') and _engine:
+    if user and user.get('constituency_id') and _engine:
         # Find booths in their constituency
         local_booths = [b for b in _engine.booths if b.constituency_id == user['constituency_id']]
         if local_booths:
