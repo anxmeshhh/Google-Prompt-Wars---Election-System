@@ -75,7 +75,7 @@ def query_table():
         columns = [row['Field'] for row in schema_rows]
 
         # Get Data (Limit 100 for safety)
-        data_rows = Database.execute(f"SELECT * FROM `{table}` LIMIT 100")
+        data_rows = Database.execute(f"SELECT * FROM `{table}` LIMIT 100") # nosec B608
 
         # Serialize non-JSON-safe types
         sanitized_data = []

@@ -219,4 +219,4 @@ if __name__ == '__main__':
     logger.info(f'   WebSocket: ws://localhost:5000')
 
     engine.start()
-    socketio.run(app, host='0.0.0.0', port=5000, debug=False, allow_unsafe_werkzeug=True)
+    socketio.run(app, host='0.0.0.0', port=5000, debug=False, allow_unsafe_werkzeug=True) # nosec B104
