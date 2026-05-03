@@ -266,9 +266,7 @@ def google_login():
     except (ValueError, TransportError) as e:
         logger.warning(f'Invalid Google token attempt: {e}')
         return jsonify({'error': 'Invalid Google token'}), 401
-    except concurrent.futures.TimeoutError:
-        logger.error('Google cert fetch timed out')
-        return jsonify({'error': 'Authentication timed out, please try again'}), 503
+
     except Exception as e:
         logger.error(f'Unexpected Google auth error: {e}')
         return jsonify({'error': 'Authentication service error, please try again'}), 500
