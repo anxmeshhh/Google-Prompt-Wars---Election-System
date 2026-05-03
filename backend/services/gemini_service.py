@@ -15,13 +15,12 @@ from groq import Groq
 
 
 def _run_in_thread(fn, *args, **kwargs):
-    """Run a blocking function in a real thread to avoid freezing eventlet."""
-    try:
-        import eventlet.tpool
-        return eventlet.tpool.execute(fn, *args, **kwargs)
-    except (ImportError, RuntimeError):
-        # Fallback for non-eventlet environments (e.g., tests)
-        return fn(*args, **kwargs)
+    """
+    DEPRECATED: We no longer offload to native threads.
+    Eventlet monkey patching automatically makes httpx and requests non-blocking.
+    Using native threads (tpool) causes deadlocks with monkey-patched threading locks.
+    """
+    return fn(*args, **kwargs)
 
 
 class GeminiService:
@@ -87,12 +86,12 @@ class GeminiService:
 
     def generate(self, prompt: str, system_instruction: str = '', agent: str = '') -> str:
         """
-        Non-blocking generation. Runs AI call in a real thread via eventlet.tpool
-        so other requests (auth, health, booths) are served concurrently.
+        Generation using eventlet. Network sockets are natively non-blocking
+        due to eventlet.monkey_patch().
         """
         if not self._configured:
             return self._fallback_response(prompt)
-        return _run_in_thread(self._generate_sync, prompt, system_instruction, agent)
+        return self._generate_sync(prompt, system_instruction, agent)
 
     def _generate_json_sync(self, prompt: str, system_instruction: str, agent: str) -> str:
         """Internal synchronous JSON generation — tries Groq first (fast), falls back to Gemini."""
@@ -145,10 +144,10 @@ class GeminiService:
             return json.dumps({"error": str(e)})
 
     def generate_json(self, prompt: str, system_instruction: str = '', agent: str = '') -> str:
-        """Non-blocking JSON generation via eventlet.tpool."""
+        """Generation using eventlet non-blocking sockets."""
         if not self._configured:
             return '{"error": "AI not configured"}'
-        return _run_in_thread(self._generate_json_sync, prompt, system_instruction, agent)
+        return self._generate_json_sync(prompt, system_instruction, agent)
 
     def count_tokens(self, text: str) -> int:
         """Count tokens in a text string using Gemini's tokenizer."""
