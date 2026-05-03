@@ -52,7 +52,7 @@ def chat():
     from agents.orchestrator import Orchestrator
     import time as _time
     import eventlet
-        orchestrator = Orchestrator()
+    orchestrator = Orchestrator()
     
     def generate_response():
         _start = _time.time()
