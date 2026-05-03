@@ -36,7 +36,7 @@ def get_timeline():
     """Return all election phases from DB, with role-specific actions."""
     user, role = _get_current_user()
     if not user:
-        return jsonify({'error': 'Not authenticated'}), 401
+        role = 'voter'  # Public fallback — show voter-level data
 
     rows = Database.execute(
         "SELECT * FROM election_phases ORDER BY display_order ASC"
@@ -75,6 +75,18 @@ def get_timeline():
         'phases': phases,
         'user_role': role,
         'total': len(phases),
+    })
+
+
+@content_bp.route('/api/content/phases', methods=['GET'])
+def get_phases_public():
+    """Public endpoint: returns election phase names and dates (no auth required)."""
+    rows = Database.execute(
+        "SELECT id, phase_key, title, icon, start_label, end_label, display_order FROM election_phases ORDER BY display_order ASC"
+    )
+    return jsonify({
+        'phases': [dict(r) for r in rows] if rows else [],
+        'total': len(rows) if rows else 0,
     })
 
 
@@ -126,7 +138,7 @@ def get_voter_guide():
     """Return all voter guide steps from DB, with role-specific notes."""
     user, role = _get_current_user()
     if not user:
-        return jsonify({'error': 'Not authenticated'}), 401
+        role = 'voter'  # Public fallback
 
     rows = Database.execute(
         "SELECT * FROM voter_guide_steps ORDER BY display_order ASC"
