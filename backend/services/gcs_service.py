@@ -10,6 +10,7 @@ import logging
 import os
 from datetime import datetime, timezone
 from config import Config
+from google.cloud import storage as gcs_storage
 
 logger = logging.getLogger('electaverse.gcs')
 
@@ -32,8 +33,7 @@ def _get_bucket():
         return None
 
     try:
-        from google.cloud import storage
-        _client = storage.Client(project=Config.GCP_PROJECT_ID or None)
+        _client = gcs_storage.Client(project=Config.GCP_PROJECT_ID or None)
         _bucket = _client.bucket(bucket_name)
         # Verify bucket exists
         if not _bucket.exists():

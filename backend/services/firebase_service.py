@@ -7,6 +7,8 @@ Uses the free Spark plan. Gracefully degrades when credentials are unavailable.
 import logging
 from datetime import datetime, timezone
 from config import Config
+import firebase_admin
+from firebase_admin import credentials, firestore, auth as firebase_auth
 
 logger = logging.getLogger('electaverse.firebase')
 
@@ -28,9 +30,6 @@ def init_firebase() -> bool:
     _initialized = True
 
     try:
-        import firebase_admin
-        from firebase_admin import credentials, firestore
-
         cred_path = Config.FIREBASE_CREDENTIALS_PATH
         project_id = Config.FIREBASE_PROJECT_ID
 
@@ -272,8 +271,7 @@ def verify_firebase_token(id_token: str) -> dict | None:
     if not is_firebase_available():
         return None
     try:
-        from firebase_admin import auth
-        decoded = auth.verify_id_token(id_token)
+        decoded = firebase_auth.verify_id_token(id_token)
         return {
             'uid': decoded.get('uid'),
             'email': decoded.get('email'),

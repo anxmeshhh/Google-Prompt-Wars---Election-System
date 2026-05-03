@@ -23,6 +23,17 @@ XSS_PATTERNS = [
     re.compile(r'document\.(cookie|domain|write)', re.IGNORECASE),
 ]
 
+# Patterns that indicate SQL injection attempts
+SQLI_PATTERNS = [
+    re.compile(r"(\b(UNION|SELECT|INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|EXEC)\b.*\b(FROM|INTO|TABLE|SET|WHERE)\b)", re.IGNORECASE),
+    re.compile(r"(--|;)\s*(DROP|ALTER|DELETE|TRUNCATE)", re.IGNORECASE),
+    re.compile(r"'\s*(OR|AND)\s+\d+\s*=\s*\d+", re.IGNORECASE),
+    re.compile(r"'\s*(OR|AND)\s+'[^']*'\s*=\s*'[^']*'", re.IGNORECASE),
+]
+
+# Maximum request payload size (1MB)
+MAX_CONTENT_LENGTH = 1 * 1024 * 1024
+
 
 def _sanitize_value(value):
     """Recursively sanitize a value (str, dict, or list) by stripping XSS vectors."""
@@ -45,6 +56,17 @@ def register_security_middleware(app):
     def inject_request_id():
         """Add a unique X-Request-ID to every request for audit trail."""
         g.request_id = request.headers.get('X-Request-ID', str(uuid.uuid4()))
+
+    @app.before_request
+    def enforce_payload_size():
+        """Reject requests with payloads exceeding MAX_CONTENT_LENGTH."""
+        if request.content_length and request.content_length > MAX_CONTENT_LENGTH:
+            logger.warning(
+                f'[SECURITY] Oversized payload rejected: {request.content_length} bytes '
+                f'from {request.remote_addr} on {request.path}'
+            )
+            from flask import abort
+            abort(413)
 
     @app.before_request
     def sanitize_json_input():
@@ -81,6 +103,9 @@ def register_security_middleware(app):
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
         response.headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=()'
         response.headers['X-Request-ID'] = getattr(g, 'request_id', 'unknown')
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+        response.headers['X-Permitted-Cross-Domain-Policies'] = 'none'
+        response.headers['Cross-Origin-Embedder-Policy'] = 'unsafe-none'
         # Prevent browsers from caching sensitive data
         if request.path.startswith('/api/auth'):
             response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'

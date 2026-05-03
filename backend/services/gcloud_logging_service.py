@@ -7,6 +7,7 @@ Gracefully degrades to standard Python logging when Cloud Logging is unavailable
 import logging
 from datetime import datetime, timezone
 from config import Config
+import google.cloud.logging as cloud_logging
 
 logger = logging.getLogger('electaverse.cloud_logging')
 
@@ -32,8 +33,6 @@ def init_cloud_logging() -> bool:
         return False
 
     try:
-        import google.cloud.logging as cloud_logging
-
         client = cloud_logging.Client(project=Config.GCP_PROJECT_ID or None)
         # Removed client.setup_logging() to prevent background thread crashes 
         # if the IAM permission 'logging.logEntries.create' is missing.
