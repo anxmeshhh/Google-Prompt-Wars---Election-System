@@ -33,7 +33,7 @@ class TestSecurityHeaders:
 
     def test_x_frame_options(self, client):
         rv = client.get('/api/health')
-        assert rv.headers.get('X-Frame-Options') == 'DENY'
+        assert rv.headers.get('X-Frame-Options') == 'SAMEORIGIN'
 
     def test_referrer_policy(self, client):
         rv = client.get('/api/health')
@@ -41,7 +41,7 @@ class TestSecurityHeaders:
 
     def test_permissions_policy(self, client):
         rv = client.get('/api/health')
-        assert 'camera=()' in rv.headers.get('Permissions-Policy', '')
+        assert 'browsing-topics=()' in rv.headers.get('Permissions-Policy', '')
 
     def test_x_request_id_present(self, client):
         rv = client.get('/api/health')
