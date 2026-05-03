@@ -27,7 +27,9 @@ class TestGCloudAIService:
         assert service.tts_client is not None
 
     @patch('services.gcloud_ai_service.translate.Client')
-    def test_translate_text(self, mock_translate):
+    @patch('services.gcloud_ai_service.language_v2.LanguageServiceClient')
+    @patch('services.gcloud_ai_service.texttospeech.TextToSpeechClient')
+    def test_translate_text(self, mock_tts, mock_nlp, mock_translate):
         mock_instance = MagicMock()
         mock_instance.translate.return_value = {'translatedText': 'नमस्ते'}
         mock_translate.return_value = mock_instance
@@ -37,8 +39,10 @@ class TestGCloudAIService:
         assert result == 'नमस्ते'
         mock_instance.translate.assert_called_with("Hello", target_language='hi')
 
+    @patch('services.gcloud_ai_service.translate.Client')
     @patch('services.gcloud_ai_service.language_v2.LanguageServiceClient')
-    def test_analyze_sentiment(self, mock_nlp):
+    @patch('services.gcloud_ai_service.texttospeech.TextToSpeechClient')
+    def test_analyze_sentiment(self, mock_tts, mock_nlp, mock_translate):
         mock_instance = MagicMock()
         mock_response = MagicMock()
         mock_response.document_sentiment.score = 0.8
@@ -51,8 +55,10 @@ class TestGCloudAIService:
         assert result['score'] == 0.8
         assert result['magnitude'] == 0.9
 
+    @patch('services.gcloud_ai_service.translate.Client')
+    @patch('services.gcloud_ai_service.language_v2.LanguageServiceClient')
     @patch('services.gcloud_ai_service.texttospeech.TextToSpeechClient')
-    def test_synthesize_speech(self, mock_tts):
+    def test_synthesize_speech(self, mock_tts, mock_nlp, mock_translate):
         mock_instance = MagicMock()
         mock_response = MagicMock()
         mock_response.audio_content = b'audio_data'
