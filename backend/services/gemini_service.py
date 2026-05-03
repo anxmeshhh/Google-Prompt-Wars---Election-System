@@ -2,12 +2,26 @@
 ElectaVerse — Gemini API Service
 Wrapper around Google's Generative AI SDK with sync and streaming support.
 Tracks usage metrics and integrates with Firebase + Cloud Logging.
+
+IMPORTANT: All AI calls are wrapped in eventlet.tpool.execute() so they run
+in a real OS thread instead of blocking the eventlet event loop. Without this,
+a single AI request (which can take 5-30s) would freeze ALL other requests.
 """
 
 import time
 import google.generativeai as genai
 from config import Config
 from groq import Groq
+
+
+def _run_in_thread(fn, *args, **kwargs):
+    """Run a blocking function in a real thread to avoid freezing eventlet."""
+    try:
+        import eventlet
+        return eventlet.tpool.execute(fn, *args, **kwargs)
+    except (ImportError, RuntimeError):
+        # Fallback for non-eventlet environments (e.g., tests)
+        return fn(*args, **kwargs)
 
 
 class GeminiService:
@@ -33,15 +47,8 @@ class GeminiService:
         """Check if Gemini API is configured and available."""
         return self._configured
 
-    def generate(self, prompt: str, system_instruction: str = '', agent: str = '') -> str:
-        """
-        Synchronous generation. Returns the full text response.
-        Falls back to a placeholder if API is not configured.
-        Tracks usage metrics to Firebase and Cloud Logging.
-        """
-        if not self._configured:
-            return self._fallback_response(prompt)
-
+    def _generate_sync(self, prompt: str, system_instruction: str, agent: str) -> str:
+        """Internal synchronous generation — runs inside a real thread via tpool."""
         start_time = time.time()
         try:
             model = genai.GenerativeModel(
@@ -75,11 +82,17 @@ class GeminiService:
             self._track_usage(agent or 'unknown', duration_ms, False)
             return f"AI service temporarily unavailable. Error: {str(e)}"
 
-    def generate_json(self, prompt: str, system_instruction: str = '', agent: str = '') -> str:
-        """Generate with JSON output mode."""
+    def generate(self, prompt: str, system_instruction: str = '', agent: str = '') -> str:
+        """
+        Non-blocking generation. Runs AI call in a real thread via eventlet.tpool
+        so other requests (auth, health, booths) are served concurrently.
+        """
         if not self._configured:
-            return '{"error": "AI not configured"}'
+            return self._fallback_response(prompt)
+        return _run_in_thread(self._generate_sync, prompt, system_instruction, agent)
 
+    def _generate_json_sync(self, prompt: str, system_instruction: str, agent: str) -> str:
+        """Internal synchronous JSON generation — runs inside a real thread via tpool."""
         start_time = time.time()
         try:
             model = genai.GenerativeModel(
@@ -107,8 +120,6 @@ class GeminiService:
             if self.groq_client:
                 print(f"Gemini failed, falling back to Groq JSON: {e}")
                 try:
-                    # Groq strictly requires the word JSON in the prompt for json_object format.
-                    # All our agents already have this, but we append to system_instruction to be perfectly safe.
                     sys_msg = (system_instruction or "You are a helpful assistant.") + " Output strictly in JSON format."
                     completion = self.groq_client.chat.completions.create(
                         model=self.groq_model,
@@ -128,6 +139,12 @@ class GeminiService:
             import json
             self._track_usage(agent or 'unknown', duration_ms, False)
             return json.dumps({"error": str(e)})
+
+    def generate_json(self, prompt: str, system_instruction: str = '', agent: str = '') -> str:
+        """Non-blocking JSON generation via eventlet.tpool."""
+        if not self._configured:
+            return '{"error": "AI not configured"}'
+        return _run_in_thread(self._generate_json_sync, prompt, system_instruction, agent)
 
     def count_tokens(self, text: str) -> int:
         """Count tokens in a text string using Gemini's tokenizer."""
@@ -190,4 +207,3 @@ class GeminiService:
 
 # Singleton instance
 gemini = GeminiService()
-

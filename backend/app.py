@@ -85,12 +85,13 @@ def handle_preflight():
 
 csp = {
     'default-src': ["'self'"],
-    'script-src': ["'self'", "'unsafe-inline'"],
+    'script-src': ["'self'", "'unsafe-inline'", 'https://apis.google.com'],
     'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
     'font-src': ["'self'", 'https://fonts.gstatic.com'],
     'connect-src': [
         "'self'",
         'https://generativelanguage.googleapis.com',
+        'https://*.googleapis.com',
         'https://*.trycloudflare.com',
         'https://*.lhr.life',
         'https://*.sslip.io',
@@ -98,9 +99,22 @@ csp = {
         'https://electaverse.firebaseapp.com',
         'wss:', 'ws:',
     ],
+    'frame-src': [
+        "'self'",
+        'https://accounts.google.com',
+        'https://electaverse.firebaseapp.com',
+        'https://*.firebaseapp.com',
+    ],
     'img-src': ["'self'", 'data:', 'https:'],
 }
-Talisman(app, content_security_policy=csp, force_https=False)
+Talisman(
+    app,
+    content_security_policy=csp,
+    force_https=False,
+    # Disable COOP — required for Google OAuth popup (window.postMessage)
+    content_security_policy_nonce_in=['script-src'],
+    session_cookie_samesite='Lax',
+)
 
 # ── Security Middleware ──
 from middleware.security_middleware import register_security_middleware
