@@ -2,7 +2,7 @@
 // - localhost:5173 (dev) → localhost:5000 (Flask dev server)
 // - GCE VM (34.41.130.216) → '' (Nginx same-origin proxy)
 // - Firebase Hosting (HTTPS) → GCE backend via sslip.io
-const GCE_API = 'http://34-41-130-216.sslip.io'
+const GCE_API = 'https://34-41-130-216.sslip.io'
 
 export const getApiUrl = () => {
   if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL
