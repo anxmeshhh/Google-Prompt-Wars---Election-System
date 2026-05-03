@@ -52,82 +52,124 @@ class Database:
     @classmethod
     def execute(cls, query: str, params: tuple = None) -> list:
         """Execute a SELECT query and return all rows as dicts."""
-        conn = cls.get_connection()
+        def _run():
+            conn = cls.get_connection()
+            try:
+                cursor = conn.cursor(dictionary=True)
+                cursor.execute(query, params or ())
+                results = cursor.fetchall()
+                cursor.close()
+                return results
+            finally:
+                conn.close()
+        
         try:
-            cursor = conn.cursor(dictionary=True)
-            cursor.execute(query, params or ())
-            results = cursor.fetchall()
-            cursor.close()
-            return results
-        finally:
-            conn.close()
+            import eventlet.tpool
+            return eventlet.tpool.execute(_run)
+        except (ImportError, RuntimeError):
+            return _run()
 
     @classmethod
     def execute_one(cls, query: str, params: tuple = None) -> dict | None:
         """Execute a SELECT query and return one row as dict."""
-        conn = cls.get_connection()
+        def _run():
+            conn = cls.get_connection()
+            try:
+                cursor = conn.cursor(dictionary=True)
+                cursor.execute(query, params or ())
+                result = cursor.fetchone()
+                cursor.close()
+                return result
+            finally:
+                conn.close()
+                
         try:
-            cursor = conn.cursor(dictionary=True)
-            cursor.execute(query, params or ())
-            result = cursor.fetchone()
-            cursor.close()
-            return result
-        finally:
-            conn.close()
+            import eventlet.tpool
+            return eventlet.tpool.execute(_run)
+        except (ImportError, RuntimeError):
+            return _run()
 
     @classmethod
     def execute_write(cls, query: str, params: tuple = None) -> int:
         """Execute an INSERT/UPDATE/DELETE and return affected rows."""
-        conn = cls.get_connection()
+        def _run():
+            conn = cls.get_connection()
+            try:
+                cursor = conn.cursor()
+                cursor.execute(query, params or ())
+                conn.commit()
+                affected = cursor.rowcount
+                cursor.close()
+                return affected
+            finally:
+                conn.close()
+                
         try:
-            cursor = conn.cursor()
-            cursor.execute(query, params or ())
-            conn.commit()
-            affected = cursor.rowcount
-            cursor.close()
-            return affected
-        finally:
-            conn.close()
+            import eventlet.tpool
+            return eventlet.tpool.execute(_run)
+        except (ImportError, RuntimeError):
+            return _run()
 
     @classmethod
     def execute_insert(cls, query: str, params: tuple = None) -> int:
         """Execute an INSERT and return the last inserted ID."""
-        conn = cls.get_connection()
+        def _run():
+            conn = cls.get_connection()
+            try:
+                cursor = conn.cursor()
+                cursor.execute(query, params or ())
+                conn.commit()
+                last_id = cursor.lastrowid
+                cursor.close()
+                return last_id
+            finally:
+                conn.close()
+                
         try:
-            cursor = conn.cursor()
-            cursor.execute(query, params or ())
-            conn.commit()
-            last_id = cursor.lastrowid
-            cursor.close()
-            return last_id
-        finally:
-            conn.close()
+            import eventlet.tpool
+            return eventlet.tpool.execute(_run)
+        except (ImportError, RuntimeError):
+            return _run()
 
     @classmethod
     def execute_many(cls, query: str, params_list: list) -> int:
         """Execute a batch INSERT/UPDATE."""
-        conn = cls.get_connection()
+        def _run():
+            conn = cls.get_connection()
+            try:
+                cursor = conn.cursor()
+                cursor.executemany(query, params_list)
+                conn.commit()
+                affected = cursor.rowcount
+                cursor.close()
+                return affected
+            finally:
+                conn.close()
+                
         try:
-            cursor = conn.cursor()
-            cursor.executemany(query, params_list)
-            conn.commit()
-            affected = cursor.rowcount
-            cursor.close()
-            return affected
-        finally:
-            conn.close()
+            import eventlet.tpool
+            return eventlet.tpool.execute(_run)
+        except (ImportError, RuntimeError):
+            return _run()
 
     @classmethod
     def execute_script(cls, script: str):
         """Execute a multi-statement SQL script (e.g., schema)."""
-        conn = cls.get_connection()
+        def _run():
+            conn = cls.get_connection()
+            try:
+                cursor = conn.cursor()
+                for statement in script.split(';'):
+                    stmt = statement.strip()
+                    if stmt:
+                        cursor.execute(stmt)
+                conn.commit()
+                cursor.close()
+            finally:
+                conn.close()
+                
         try:
-            cursor = conn.cursor()
-            for statement in script.split(';'):
-                stmt = statement.strip()
-                if stmt:
-                    cursor.execute(stmt)
-            conn.commit()
-            cursor.close()
-        finally:
-            conn.close()
+            import eventlet.tpool
+            eventlet.tpool.execute(_run)
+        except (ImportError, RuntimeError):
+            _run()
