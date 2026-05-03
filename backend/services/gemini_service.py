@@ -9,18 +9,9 @@ a single AI request (which can take 5-30s) would freeze ALL other requests.
 """
 
 import time
-import google.generativeai as genai
+import json
+import requests
 from config import Config
-from groq import Groq
-
-
-def _run_in_thread(fn, *args, **kwargs):
-    """
-    DEPRECATED: We no longer offload to native threads.
-    Eventlet monkey patching automatically makes httpx and requests non-blocking.
-    Using native threads (tpool) causes deadlocks with monkey-patched threading locks.
-    """
-    return fn(*args, **kwargs)
 
 
 class GeminiService:
@@ -29,18 +20,10 @@ class GeminiService:
     def __init__(self):
         self.api_key = Config.GEMINI_API_KEY
         self.model_name = 'gemini-2.5-flash'
-        self._configured = False
-        self._configure()
+        self._configured = bool(self.api_key and self.api_key != 'your_gemini_api_key_here')
 
         self.groq_api_key = Config.GROQ_API_KEY
-        self.groq_client = Groq(api_key=self.groq_api_key) if self.groq_api_key else None
         self.groq_model = "llama-3.3-70b-versatile"
-
-    def _configure(self):
-        """Configure the Gemini SDK."""
-        if self.api_key and self.api_key != 'your_gemini_api_key_here':
-            genai.configure(api_key=self.api_key)
-            self._configured = True
 
     def is_available(self) -> bool:
         """Check if Gemini API is configured and available."""
@@ -51,34 +34,44 @@ class GeminiService:
         start_time = time.time()
 
         # ── Try Groq FIRST (1-3s typical response time) ──
-        if self.groq_client:
+        if self.groq_api_key:
             try:
-                completion = self.groq_client.chat.completions.create(
-                    model=self.groq_model,
-                    messages=[
+                headers = {
+                    "Authorization": f"Bearer {self.groq_api_key}",
+                    "Content-Type": "application/json"
+                }
+                data = {
+                    "model": self.groq_model,
+                    "messages": [
                         {"role": "system", "content": system_instruction or "You are a helpful assistant."},
                         {"role": "user", "content": prompt}
                     ]
-                )
+                }
+                res = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=data, timeout=8)
+                res.raise_for_status()
+                content = res.json()['choices'][0]['message']['content']
+                
                 duration_ms = int((time.time() - start_time) * 1000)
                 self._track_usage(agent or 'unknown', duration_ms, True, provider='groq')
-                return completion.choices[0].message.content
+                return content
             except Exception as groq_e:
                 print(f"Groq failed, falling back to Gemini: {groq_e}")
 
         # ── Fall back to Gemini (slower, may be rate-limited) ──
         try:
-            model = genai.GenerativeModel(
-                model_name=self.model_name,
-                system_instruction=system_instruction or None,
-            )
-            response = model.generate_content(
-                prompt,
-                request_options={'timeout': 8},
-            )
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model_name}:generateContent?key={self.api_key}"
+            headers = {"Content-Type": "application/json"}
+            data = {
+                "system_instruction": {"parts": {"text": system_instruction or "You are a helpful assistant."}},
+                "contents": [{"parts": [{"text": prompt}]}]
+            }
+            res = requests.post(url, headers=headers, json=data, timeout=8)
+            res.raise_for_status()
+            content = res.json()['candidates'][0]['content']['parts'][0]['text']
+            
             duration_ms = int((time.time() - start_time) * 1000)
             self._track_usage(agent or 'unknown', duration_ms, True, provider='gemini')
-            return response.text
+            return content
         except Exception as e:
             duration_ms = int((time.time() - start_time) * 1000)
             self._track_usage(agent or 'unknown', duration_ms, False)
@@ -95,39 +88,47 @@ class GeminiService:
 
     def _generate_json_sync(self, prompt: str, system_instruction: str, agent: str) -> str:
         """Internal synchronous JSON generation — tries Groq first (fast), falls back to Gemini."""
-        import json
         start_time = time.time()
 
         # ── Try Groq FIRST (fast, supports json_object format) ──
-        if self.groq_client:
+        if self.groq_api_key:
             try:
                 sys_msg = (system_instruction or "You are a helpful assistant.") + " Output strictly in JSON format."
-                completion = self.groq_client.chat.completions.create(
-                    model=self.groq_model,
-                    messages=[
+                headers = {
+                    "Authorization": f"Bearer {self.groq_api_key}",
+                    "Content-Type": "application/json"
+                }
+                data = {
+                    "model": self.groq_model,
+                    "messages": [
                         {"role": "system", "content": sys_msg},
                         {"role": "user", "content": prompt}
                     ],
-                    response_format={"type": "json_object"}
-                )
+                    "response_format": {"type": "json_object"}
+                }
+                res = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=data, timeout=8)
+                res.raise_for_status()
+                content = res.json()['choices'][0]['message']['content']
+                
                 duration_ms = int((time.time() - start_time) * 1000)
                 self._track_usage(agent or 'unknown', duration_ms, True, provider='groq')
-                return completion.choices[0].message.content
+                return content
             except Exception as groq_e:
                 print(f"Groq JSON failed, falling back to Gemini: {groq_e}")
 
         # ── Fall back to Gemini ──
         try:
-            model = genai.GenerativeModel(
-                model_name=self.model_name,
-                system_instruction=system_instruction or None,
-                generation_config={"response_mime_type": "application/json"},
-            )
-            response = model.generate_content(
-                prompt,
-                request_options={'timeout': 8},
-            )
-            raw = response.text.strip()
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model_name}:generateContent?key={self.api_key}"
+            headers = {"Content-Type": "application/json"}
+            data = {
+                "system_instruction": {"parts": {"text": system_instruction or "You are a helpful assistant."}},
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {"responseMimeType": "application/json"}
+            }
+            res = requests.post(url, headers=headers, json=data, timeout=8)
+            res.raise_for_status()
+            raw = res.json()['candidates'][0]['content']['parts'][0]['text'].strip()
+            
             # Strip markdown code fences if present
             if raw.startswith('```'):
                 lines = raw.split('\n')
@@ -135,6 +136,7 @@ class GeminiService:
                     raw = '\n'.join(lines[1:])
                 if raw.endswith('```'):
                     raw = raw[:-3].strip()
+                    
             duration_ms = int((time.time() - start_time) * 1000)
             self._track_usage(agent or 'unknown', duration_ms, True, provider='gemini')
             return raw
@@ -150,37 +152,20 @@ class GeminiService:
         return self._generate_json_sync(prompt, system_instruction, agent)
 
     def count_tokens(self, text: str) -> int:
-        """Count tokens in a text string using Gemini's tokenizer."""
-        if not self._configured:
-            # Rough estimate: ~4 chars per token
-            return len(text) // 4
-        try:
-            model = genai.GenerativeModel(model_name=self.model_name)
-            result = model.count_tokens(text)
-            return result.total_tokens
-        except Exception:
-            return len(text) // 4
+        """Roughly count tokens (to avoid blocking gRPC call)."""
+        return len(text) // 4
 
     def list_available_models(self) -> list[str]:
-        """List all available Gemini models."""
-        if not self._configured:
-            return []
-        try:
-            models = genai.list_models()
-            return [
-                m.name for m in models
-                if 'generateContent' in (m.supported_generation_methods or [])
-            ]
-        except Exception:
-            return []
+        """List available models."""
+        return [self.model_name]
 
     def get_model_info(self) -> dict:
         """Get information about the currently configured model."""
         return {
             'model_name': self.model_name,
             'configured': self._configured,
-            'groq_fallback': self.groq_client is not None,
-            'groq_model': self.groq_model if self.groq_client else None,
+            'groq_fallback': bool(self.groq_api_key),
+            'groq_model': self.groq_model if self.groq_api_key else None,
         }
 
     def _track_usage(self, agent: str, duration_ms: int, success: bool, provider: str = 'gemini') -> None:
