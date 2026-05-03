@@ -227,3 +227,6 @@ if __name__ == '__main__':
 
     engine.start()
     socketio.run(app, host='0.0.0.0', port=5000, debug=False, allow_unsafe_werkzeug=True) # nosec B104
+
+
+#At the end we gave our all and tried the best by sacrificing my entire time to this , Google prompt wars , and earned rank 404 ,  I'm happy . 
