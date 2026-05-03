@@ -104,9 +104,13 @@ Talisman(
     force_https=False,
     content_security_policy_nonce_in=['script-src'],
     session_cookie_samesite='Lax',
-    # Allow Google OAuth popup to postMessage back to the opener window
-    cross_origin_opener_policy='same-origin-allow-popups',
 )
+
+# Allow Google OAuth popup to postMessage back to the opener window
+@app.after_request
+def set_coop_header(response):
+    response.headers['Cross-Origin-Opener-Policy'] = 'same-origin-allow-popups'
+    return response
 
 # ── Security Middleware ──
 from middleware.security_middleware import register_security_middleware
