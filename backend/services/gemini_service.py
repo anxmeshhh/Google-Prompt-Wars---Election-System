@@ -3,7 +3,7 @@ ElectaVerse — Gemini API Service
 Wrapper around Google's Generative AI SDK with sync and streaming support.
 Tracks usage metrics and integrates with Firebase + Cloud Logging.
 
-IMPORTANT: All AI calls are wrapped in eventlet.tpool.execute() so they run
+IMPORTANT: All AI calls are wrapped in eventlet.eventlet.spawn() so they run
 in a real OS thread instead of blocking the eventlet event loop. Without this,
 a single AI request (which can take 5-30s) would freeze ALL other requests.
 """
@@ -129,8 +129,7 @@ class GeminiService:
                                 
                 duration_ms = int((time.time() - start_time) * 1000)
                 import eventlet
-                from eventlet import tpool
-                tpool.execute(self._track_usage, agent or 'unknown', duration_ms, True, 'groq')
+                                eventlet.spawn(self._track_usage, agent or 'unknown', duration_ms, True, 'groq')
                 return
             except Exception as groq_e:
                 print(f"Groq streaming failed, falling back to Gemini: {groq_e}")
@@ -162,13 +161,11 @@ class GeminiService:
                             
             duration_ms = int((time.time() - start_time) * 1000)
             import eventlet
-            from eventlet import tpool
-            tpool.execute(self._track_usage, agent or 'unknown', duration_ms, True, 'gemini')
+                        eventlet.spawn(self._track_usage, agent or 'unknown', duration_ms, True, 'gemini')
         except Exception as e:
             duration_ms = int((time.time() - start_time) * 1000)
             import eventlet
-            from eventlet import tpool
-            tpool.execute(self._track_usage, agent or 'unknown', duration_ms, False, 'gemini')
+                        eventlet.spawn(self._track_usage, agent or 'unknown', duration_ms, False, 'gemini')
             yield f"\n\n[AI service temporarily unavailable. Error: {str(e)}]"
 
     def _generate_json_sync(self, prompt: str, system_instruction: str, agent: str) -> str:
@@ -264,8 +261,7 @@ class GeminiService:
         try:
             from services.gcloud_logging_service import log_agent_action
             import eventlet
-            from eventlet import tpool
-            tpool.execute(log_agent_action, agent, f'{provider}_generate', duration_ms)
+                        eventlet.spawn(log_agent_action, agent, f'{provider}_generate', duration_ms)
         except Exception:
             pass
 
