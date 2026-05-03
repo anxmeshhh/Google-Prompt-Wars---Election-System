@@ -250,7 +250,7 @@ def google_login():
 
     try:
         # Verify Google token using google-auth library
-        client_id = Config.GOOGLE_CLIENT_ID or '855420223700-m7qonpntg4p0i1s3u1fbs52lck69e7t4.apps.googleusercontent.com'
+        client_id = Config.GOOGLE_CLIENT_ID or '896456277671-tbi2jc4cdppnu3blcrbsguesuvmfo0fu.apps.googleusercontent.com'
         idinfo = id_token.verify_oauth2_token(
             token, google_requests.Request(), client_id
         )
