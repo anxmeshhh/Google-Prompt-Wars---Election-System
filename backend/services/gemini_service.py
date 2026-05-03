@@ -48,8 +48,26 @@ class GeminiService:
         return self._configured
 
     def _generate_sync(self, prompt: str, system_instruction: str, agent: str) -> str:
-        """Internal synchronous generation — runs inside a real thread via tpool."""
+        """Internal synchronous generation — tries Groq first (fast), falls back to Gemini."""
         start_time = time.time()
+
+        # ── Try Groq FIRST (1-3s typical response time) ──
+        if self.groq_client:
+            try:
+                completion = self.groq_client.chat.completions.create(
+                    model=self.groq_model,
+                    messages=[
+                        {"role": "system", "content": system_instruction or "You are a helpful assistant."},
+                        {"role": "user", "content": prompt}
+                    ]
+                )
+                duration_ms = int((time.time() - start_time) * 1000)
+                self._track_usage(agent or 'unknown', duration_ms, True, provider='groq')
+                return completion.choices[0].message.content
+            except Exception as groq_e:
+                print(f"Groq failed, falling back to Gemini: {groq_e}")
+
+        # ── Fall back to Gemini (slower, may be rate-limited) ──
         try:
             model = genai.GenerativeModel(
                 model_name=self.model_name,
@@ -57,28 +75,13 @@ class GeminiService:
             )
             response = model.generate_content(
                 prompt,
-                request_options={'timeout': 15},
+                request_options={'timeout': 8},
             )
             duration_ms = int((time.time() - start_time) * 1000)
-            self._track_usage(agent or 'unknown', duration_ms, True)
+            self._track_usage(agent or 'unknown', duration_ms, True, provider='gemini')
             return response.text
         except Exception as e:
             duration_ms = int((time.time() - start_time) * 1000)
-            if self.groq_client:
-                print(f"Gemini failed, falling back to Groq: {e}")
-                try:
-                    completion = self.groq_client.chat.completions.create(
-                        model=self.groq_model,
-                        messages=[
-                            {"role": "system", "content": system_instruction or "You are a helpful assistant."},
-                            {"role": "user", "content": prompt}
-                        ]
-                    )
-                    self._track_usage(agent or 'unknown', duration_ms, True, provider='groq')
-                    return completion.choices[0].message.content
-                except Exception as groq_e:
-                    self._track_usage(agent or 'unknown', duration_ms, False)
-                    return f"AI service temporarily unavailable. Groq Error: {str(groq_e)}"
             self._track_usage(agent or 'unknown', duration_ms, False)
             return f"AI service temporarily unavailable. Error: {str(e)}"
 
@@ -92,8 +95,29 @@ class GeminiService:
         return _run_in_thread(self._generate_sync, prompt, system_instruction, agent)
 
     def _generate_json_sync(self, prompt: str, system_instruction: str, agent: str) -> str:
-        """Internal synchronous JSON generation — runs inside a real thread via tpool."""
+        """Internal synchronous JSON generation — tries Groq first (fast), falls back to Gemini."""
+        import json
         start_time = time.time()
+
+        # ── Try Groq FIRST (fast, supports json_object format) ──
+        if self.groq_client:
+            try:
+                sys_msg = (system_instruction or "You are a helpful assistant.") + " Output strictly in JSON format."
+                completion = self.groq_client.chat.completions.create(
+                    model=self.groq_model,
+                    messages=[
+                        {"role": "system", "content": sys_msg},
+                        {"role": "user", "content": prompt}
+                    ],
+                    response_format={"type": "json_object"}
+                )
+                duration_ms = int((time.time() - start_time) * 1000)
+                self._track_usage(agent or 'unknown', duration_ms, True, provider='groq')
+                return completion.choices[0].message.content
+            except Exception as groq_e:
+                print(f"Groq JSON failed, falling back to Gemini: {groq_e}")
+
+        # ── Fall back to Gemini ──
         try:
             model = genai.GenerativeModel(
                 model_name=self.model_name,
@@ -102,7 +126,7 @@ class GeminiService:
             )
             response = model.generate_content(
                 prompt,
-                request_options={'timeout': 15},
+                request_options={'timeout': 8},
             )
             raw = response.text.strip()
             # Strip markdown code fences if present
@@ -113,30 +137,10 @@ class GeminiService:
                 if raw.endswith('```'):
                     raw = raw[:-3].strip()
             duration_ms = int((time.time() - start_time) * 1000)
-            self._track_usage(agent or 'unknown', duration_ms, True)
+            self._track_usage(agent or 'unknown', duration_ms, True, provider='gemini')
             return raw
         except Exception as e:
             duration_ms = int((time.time() - start_time) * 1000)
-            if self.groq_client:
-                print(f"Gemini failed, falling back to Groq JSON: {e}")
-                try:
-                    sys_msg = (system_instruction or "You are a helpful assistant.") + " Output strictly in JSON format."
-                    completion = self.groq_client.chat.completions.create(
-                        model=self.groq_model,
-                        messages=[
-                            {"role": "system", "content": sys_msg},
-                            {"role": "user", "content": prompt}
-                        ],
-                        response_format={"type": "json_object"}
-                    )
-                    self._track_usage(agent or 'unknown', duration_ms, True, provider='groq')
-                    return completion.choices[0].message.content
-                except Exception as groq_e:
-                    import json
-                    self._track_usage(agent or 'unknown', duration_ms, False)
-                    return json.dumps({"error": f"Groq fallback failed: {str(groq_e)}"})
-
-            import json
             self._track_usage(agent or 'unknown', duration_ms, False)
             return json.dumps({"error": str(e)})
 
