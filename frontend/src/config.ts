@@ -2,7 +2,7 @@
 // - localhost:5173 (dev) → localhost:5000 (Flask dev server)
 // - GCE VM (34.41.130.216) → '' (Nginx same-origin proxy)
 // - Firebase Hosting (HTTPS) → Cloudflared tunnel to GCE backend
-const GCE_TUNNEL = 'https://epson-bind-tabs-spray.trycloudflare.com'
+const GCE_TUNNEL = 'https://half-itself-yard-prison.trycloudflare.com'
 
 export const getApiUrl = () => {
   if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL
