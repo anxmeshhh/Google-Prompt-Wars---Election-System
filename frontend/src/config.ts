@@ -1,8 +1,8 @@
 // Smart API URL routing:
 // - localhost:5173 (dev) → localhost:5000 (Flask dev server)
 // - GCE VM (34.41.130.216) → '' (Nginx same-origin proxy)
-// - Firebase Hosting (HTTPS) → Native GCE HTTPS endpoint (sslip.io with Let's Encrypt)
-const GCE_TUNNEL = 'https://34-41-130-216.sslip.io'
+// - Firebase Hosting (HTTPS) → Cloudflared tunnel to GCE backend
+const GCE_TUNNEL = 'https://epson-bind-tabs-spray.trycloudflare.com'
 
 export const getApiUrl = () => {
   if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL
