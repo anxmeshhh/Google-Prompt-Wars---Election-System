@@ -87,7 +87,7 @@ function App() {
   // ── Socket Connection (only when logged in) ──
   useEffect(() => {
     if (!user) return
-    const s = io(API || undefined, { transports: ['websocket', 'polling'] })
+    const s = io(API || undefined)
     s.on('connect', () => setConnected(true))
     s.on('disconnect', () => setConnected(false))
     s.on('stats_update', (data: Stats) => setStats(data))
