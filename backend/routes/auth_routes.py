@@ -397,7 +397,7 @@ def refresh():
 
 @auth_bp.route('/api/auth/send-otp', methods=['POST'])
 def send_otp():
-    """Send a 6-digit OTP verification code to the given email."""
+    """Resend a 6-digit OTP verification code to the given email."""
     data = request.get_json()
     email = data.get('email', '').strip().lower()
 
@@ -405,31 +405,19 @@ def send_otp():
     if not email_valid:
         return jsonify({'error': email_err or 'Valid email is required'}), 400
 
-    otp = generate_otp(email)
+    # Preserve any pending registration data from the original generate_otp call
+    from services.email_service import _otp_store
+    existing_data = None
+    if email in _otp_store:
+        existing_data = _otp_store[email].get('data')
+
+    otp = generate_otp(email, existing_data)
     sent = send_otp_email(email, otp)
 
     if sent:
-        logger.info(f'OTP sent to {email}')
-        return jsonify({'message': 'Verification code sent to your email'})
-    else:
-        # Even if SMTP fails, return success for security (don't leak SMTP status)
-        return jsonify({'message': 'Verification code sent to your email'})
-
-
-@auth_bp.route('/api/auth/verify-otp', methods=['POST'])
-def verify_otp_route():
-    """Verify a 6-digit OTP code."""
-    data = request.get_json()
-    email = data.get('email', '').strip().lower()
-    code = data.get('code', '').strip()
-
-    if not email or not code:
-        return jsonify({'error': 'Email and code are required'}), 400
-
-    if verify_otp(email, code):
-        return jsonify({'verified': True, 'message': 'Email verified successfully'})
-    else:
-        return jsonify({'error': 'Invalid or expired code'}), 401
+        logger.info(f'OTP resent to {email}')
+    # Always return success for security (don't leak SMTP status)
+    return jsonify({'message': 'Verification code sent to your email'})
 
 
 @auth_bp.route('/api/auth/me', methods=['GET'])
