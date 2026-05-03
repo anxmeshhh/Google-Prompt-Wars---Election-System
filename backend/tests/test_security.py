@@ -83,24 +83,30 @@ class TestOTP:
 
     def test_verify_correct_otp(self):
         """Correct OTP should verify successfully."""
-        otp = generate_otp("verify@test.com")
-        assert verify_otp("verify@test.com", otp) is True
+        otp = generate_otp("verify@test.com", {"test": "data"})
+        valid, data = verify_otp("verify@test.com", otp)
+        assert valid is True
+        assert data == {"test": "data"}
 
     def test_verify_wrong_otp(self):
         """Wrong OTP should fail verification."""
         generate_otp("wrong@test.com")
-        assert verify_otp("wrong@test.com", "000000") is False
+        valid, _ = verify_otp("wrong@test.com", "000000")
+        assert valid is False
 
     def test_verify_expired_otp(self):
         """OTP for unknown email should fail."""
-        assert verify_otp("nobody@test.com", "123456") is False
+        valid, _ = verify_otp("nobody@test.com", "123456")
+        assert valid is False
 
     def test_otp_consumed_after_use(self):
         """OTP should only work once."""
         otp = generate_otp("once@test.com")
-        assert verify_otp("once@test.com", otp) is True
+        valid, _ = verify_otp("once@test.com", otp)
+        assert valid is True
         # Second attempt should fail
-        assert verify_otp("once@test.com", otp) is False
+        valid2, _ = verify_otp("once@test.com", otp)
+        assert valid2 is False
 
 
 class TestAuthEndpoints:

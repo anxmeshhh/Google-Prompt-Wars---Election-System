@@ -21,35 +21,25 @@ class TestFactChecker:
 
     @patch('agents.fact_checker.GeminiService')
     def test_verify_claim_returns_verdict_structure(self, MockGemini):
-        """verify_claim should return dict with verdict, confidence, reasoning."""
+        """verify_claim_stream should yield markdown chunks."""
         mock_instance = MagicMock()
-        mock_instance.generate_json.return_value = json.dumps({
-            'verdict': 'FALSE',
-            'confidence_score': 95,
-            'reasoning': 'EVMs have no wireless chips.',
-            'official_sources': ['ECI Official Guidelines'],
-        })
+        mock_instance.generate_stream.return_value = iter(["## Verdict: FALSE\n", "**Confidence Score:** 95%\n"])
         MockGemini.return_value = mock_instance
 
         from agents.fact_checker import FactCheckerAgent
         agent = FactCheckerAgent()
         agent.gemini = mock_instance
-        result = agent.verify_claim('EVMs can be hacked via Bluetooth')
+        chunks = list(agent.verify_claim_stream('EVMs can be hacked via Bluetooth'))
 
-        assert result['verdict'] == 'FALSE'
-        assert result['confidence_score'] == 95
-        assert 'reasoning' in result
+        assert len(chunks) == 2
+        assert "FALSE" in chunks[0]
+        assert "95%" in chunks[1]
 
     @patch('agents.fact_checker.GeminiService')
     def test_verify_claim_with_live_context(self, MockGemini):
-        """verify_claim should incorporate live context into the prompt."""
+        """verify_claim_stream should incorporate live context into the prompt."""
         mock_instance = MagicMock()
-        mock_instance.generate_json.return_value = json.dumps({
-            'verdict': 'FALSE',
-            'confidence_score': 90,
-            'reasoning': 'Context shows voting is active.',
-            'official_sources': [],
-        })
+        mock_instance.generate_stream.return_value = iter(["## Verdict: FALSE"])
         MockGemini.return_value = mock_instance
 
         from agents.fact_checker import FactCheckerAgent
@@ -61,23 +51,28 @@ class TestFactChecker:
             'open_incidents': 2,
             'turnout_percent': 35.5,
         }
-        result = agent.verify_claim('Voting has been stopped', context)
-        assert result['verdict'] == 'FALSE'
+        chunks = list(agent.verify_claim_stream('Voting has been stopped', context))
+        assert "FALSE" in chunks[0]
 
     @patch('agents.fact_checker.GeminiService')
     def test_error_returns_error_verdict(self, MockGemini):
-        """Agent should return ERROR verdict when Gemini fails."""
+        """Agent should handle Gemini stream failures gracefully or raise."""
         mock_instance = MagicMock()
-        mock_instance.generate_json.side_effect = Exception('API quota exceeded')
+        # In a real generator, if an exception is raised, it bubbles up.
+        # We can simulate this by having generate_stream raise an exception when iterated.
+        def mock_stream(*args, **kwargs):
+            raise Exception('API quota exceeded')
+        mock_instance.generate_stream.side_effect = mock_stream
         MockGemini.return_value = mock_instance
 
         from agents.fact_checker import FactCheckerAgent
         agent = FactCheckerAgent()
         agent.gemini = mock_instance
-        result = agent.verify_claim('Some claim')
-
-        assert result['verdict'] == 'ERROR'
-        assert result['confidence_score'] == 0
+        
+        # Stream methods just yield what the generator yields, so they will raise the Exception
+        import pytest
+        with pytest.raises(Exception, match='API quota exceeded'):
+            list(agent.verify_claim_stream('Some claim'))
 
 
 # ═══════════════════════════════════════════
@@ -89,41 +84,36 @@ class TestDebateModerator:
 
     @patch('agents.debate_moderator.GeminiService')
     def test_generate_debate_returns_structure(self, MockGemini):
-        """generate_debate should return proper debate JSON structure."""
+        """generate_debate_stream should yield markdown chunks."""
         mock_instance = MagicMock()
-        mock_instance.generate_json.return_value = json.dumps({
-            'persona_a_name': 'Policy Hawk',
-            'persona_b_name': 'Democracy Dove',
-            'arguments_a': [{'point': 'Arg 1', 'logic_score': 85, 'evidence_score': 90, 'persuasion_score': 75}],
-            'arguments_b': [{'point': 'Counter 1', 'logic_score': 80, 'evidence_score': 85, 'persuasion_score': 88}],
-            'verdict': 'Persona A made the stronger case.',
-        })
+        mock_instance.generate_stream.return_value = iter(["# Debate: EVM Security\n", "## Red Corner: Policy Hawk\n"])
         MockGemini.return_value = mock_instance
 
         from agents.debate_moderator import DebateModeratorAgent
         agent = DebateModeratorAgent()
         agent.gemini = mock_instance
-        result = agent.generate_debate('EVM Security', 'Policy Hawk', 'Democracy Dove')
+        chunks = list(agent.generate_debate_stream('EVM Security', 'Policy Hawk', 'Democracy Dove'))
 
-        assert 'persona_a_name' in result
-        assert 'arguments_a' in result
-        assert 'verdict' in result
+        assert len(chunks) == 2
+        assert "EVM Security" in chunks[0]
+        assert "Policy Hawk" in chunks[1]
 
     @patch('agents.debate_moderator.GeminiService')
     def test_error_returns_fallback(self, MockGemini):
-        """Agent should return fallback when Gemini fails."""
+        """Agent should bubble up stream exceptions."""
         mock_instance = MagicMock()
-        mock_instance.generate_json.side_effect = Exception('API error')
+        def mock_stream(*args, **kwargs):
+            raise Exception('API error')
+        mock_instance.generate_stream.side_effect = mock_stream
         MockGemini.return_value = mock_instance
 
         from agents.debate_moderator import DebateModeratorAgent
         agent = DebateModeratorAgent()
         agent.gemini = mock_instance
-        result = agent.generate_debate('Topic', 'A', 'B')
-
-        assert result['persona_a_name'] == 'A'
-        assert result['persona_b_name'] == 'B'
-        assert 'offline' in result['verdict'].lower() or 'error' in result['verdict'].lower()
+        
+        import pytest
+        with pytest.raises(Exception, match='API error'):
+            list(agent.generate_debate_stream('Topic', 'A', 'B'))
 
 
 # ═══════════════════════════════════════════
