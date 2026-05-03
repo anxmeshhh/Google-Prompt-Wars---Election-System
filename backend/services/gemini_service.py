@@ -48,7 +48,10 @@ class GeminiService:
                 model_name=self.model_name,
                 system_instruction=system_instruction or None,
             )
-            response = model.generate_content(prompt)
+            response = model.generate_content(
+                prompt,
+                request_options={'timeout': 15},
+            )
             duration_ms = int((time.time() - start_time) * 1000)
             self._track_usage(agent or 'unknown', duration_ms, True)
             return response.text
@@ -84,7 +87,10 @@ class GeminiService:
                 system_instruction=system_instruction or None,
                 generation_config={"response_mime_type": "application/json"},
             )
-            response = model.generate_content(prompt)
+            response = model.generate_content(
+                prompt,
+                request_options={'timeout': 15},
+            )
             raw = response.text.strip()
             # Strip markdown code fences if present
             if raw.startswith('```'):
