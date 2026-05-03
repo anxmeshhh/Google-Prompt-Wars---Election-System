@@ -129,7 +129,7 @@ class GeminiService:
                                 
                 duration_ms = int((time.time() - start_time) * 1000)
                 import eventlet
-from eventlet import tpool
+                from eventlet import tpool
                 tpool.execute(self._track_usage, agent or 'unknown', duration_ms, True, 'groq')
                 return
             except Exception as groq_e:
@@ -162,12 +162,12 @@ from eventlet import tpool
                             
             duration_ms = int((time.time() - start_time) * 1000)
             import eventlet
-from eventlet import tpool
+            from eventlet import tpool
             tpool.execute(self._track_usage, agent or 'unknown', duration_ms, True, 'gemini')
         except Exception as e:
             duration_ms = int((time.time() - start_time) * 1000)
             import eventlet
-from eventlet import tpool
+            from eventlet import tpool
             tpool.execute(self._track_usage, agent or 'unknown', duration_ms, False, 'gemini')
             yield f"\n\n[AI service temporarily unavailable. Error: {str(e)}]"
 
@@ -264,7 +264,7 @@ from eventlet import tpool
         try:
             from services.gcloud_logging_service import log_agent_action
             import eventlet
-from eventlet import tpool
+            from eventlet import tpool
             tpool.execute(log_agent_action, agent, f'{provider}_generate', duration_ms)
         except Exception:
             pass
