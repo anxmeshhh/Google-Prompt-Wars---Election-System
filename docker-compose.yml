@@ -33,7 +33,7 @@ services:
       - DB_NAME=electaverse
       - JWT_SECRET=electaverse-super-secret-key-2026
     env_file:
-      - .env
+      - ./backend/.env
     depends_on:
       db:
         condition: service_healthy
