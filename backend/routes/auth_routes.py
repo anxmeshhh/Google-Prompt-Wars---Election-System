@@ -252,21 +252,12 @@ def google_login():
         return jsonify({'error': 'Token is required'}), 400
 
     try:
-        # Verify Google token using urllib3 transport (Eventlet-safe, no monkey-patch conflicts)
+        # Verify Google token using urllib3 transport (Eventlet-safe since it's monkey-patched)
         client_id = Config.GOOGLE_CLIENT_ID or '896456277671-tbi2jc4cdppnu3blcrbsguesuvmfo0fu.apps.googleusercontent.com'
         
-        def _verify():
-            http = urllib3.PoolManager()
-            request_obj = Urllib3Request(http)
-            return id_token.verify_oauth2_token(token, request_obj, client_id)
-        
-        # Run in a real native OS thread via ThreadPoolExecutor.
-        # This is required because urllib3 uses C-level SSL which cannot be
-        # monkey-patched by Eventlet — it MUST run outside the greenlet event loop.
-        import concurrent.futures
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(_verify)
-            idinfo = future.result(timeout=10)
+        http = urllib3.PoolManager()
+        request_obj = Urllib3Request(http)
+        idinfo = id_token.verify_oauth2_token(token, request_obj, client_id)
 
         email = idinfo['email'].lower()
         name = idinfo.get('name', email.split('@')[0])
