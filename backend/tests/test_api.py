@@ -6,6 +6,7 @@ battle, and database routes.
 
 import pytest
 import json
+from unittest.mock import patch
 
 
 # ─────────────────────────────────────────────
@@ -109,8 +110,10 @@ class TestGoogleAuth:
         assert rv.status_code == 400
         assert 'Token is required' in rv.get_json()['error']
 
-    def test_google_login_invalid_token(self, client):
+    @patch('routes.auth_routes.id_token.verify_oauth2_token')
+    def test_google_login_invalid_token(self, mock_verify, client):
         """Google login with fake token should return 401."""
+        mock_verify.side_effect = ValueError('Invalid token')
         rv = client.post('/api/auth/google', json={'token': 'fake.jwt.token'})
         assert rv.status_code == 401
 
