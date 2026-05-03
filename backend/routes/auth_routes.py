@@ -13,7 +13,9 @@ from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from google.oauth2 import id_token
-from google.auth.transport import requests as google_requests
+import urllib3
+from google.auth.transport.urllib3 import Request as Urllib3Request
+from google.auth.exceptions import TransportError
 from config import Config
 from db.connection import Database
 from services.security import (
@@ -250,18 +252,26 @@ def google_login():
         return jsonify({'error': 'Token is required'}), 400
 
     try:
-        # Verify Google token using google-auth library
+        # Verify Google token using urllib3 transport (Eventlet-safe, no monkey-patch conflicts)
         client_id = Config.GOOGLE_CLIENT_ID or '896456277671-tbi2jc4cdppnu3blcrbsguesuvmfo0fu.apps.googleusercontent.com'
-        idinfo = id_token.verify_oauth2_token(
-            token, google_requests.Request(), client_id
-        )
+        
+        def _verify():
+            http = urllib3.PoolManager()
+            request_obj = Urllib3Request(http)
+            return id_token.verify_oauth2_token(token, request_obj, client_id)
+        
+        # Run in native OS thread so blocking HTTPS cert-fetch doesn't stall eventlet
+        idinfo = eventlet.tpool.execute(_verify)
         email = idinfo['email'].lower()
         name = idinfo.get('name', email.split('@')[0])
         google_sub = idinfo.get('sub', '')
         logger.info(f'Google OAuth verified for {email} (sub={google_sub})')
-    except ValueError as e:
+    except (ValueError, TransportError) as e:
         logger.warning(f'Invalid Google token attempt: {e}')
         return jsonify({'error': 'Invalid Google token'}), 401
+    except Exception as e:
+        logger.error(f'Unexpected Google auth error: {e}')
+        return jsonify({'error': 'Authentication service error, please try again'}), 500
 
     # Find user
     user = Database.execute_one(
