@@ -52,6 +52,7 @@ def chat():
     from agents.orchestrator import Orchestrator
     import time as _time
     import eventlet
+from eventlet import tpool
     orchestrator = Orchestrator()
     
     def generate_response():
@@ -106,7 +107,7 @@ def chat():
                 except Exception:
                     pass
                     
-            eventlet.spawn(save_to_db)
+            tpool.execute(save_to_db)
 
     return Response(stream_with_context(generate_response()), mimetype='text/event-stream')
 

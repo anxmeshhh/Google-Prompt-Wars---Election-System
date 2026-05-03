@@ -5,6 +5,7 @@ Generates AI-vs-AI policy debates and persists them to MySQL, GCS, and Firebase.
 
 from flask import Blueprint, request, jsonify, Response, stream_with_context
 import eventlet
+from eventlet import tpool
 import time as _time
 
 battle_bp = Blueprint('battle', __name__)
@@ -80,7 +81,7 @@ def start_battle():
                 except Exception:
                     pass
 
-            eventlet.spawn(save_to_db)
+            tpool.execute(save_to_db)
 
     return Response(stream_with_context(generate_response()), mimetype='text/event-stream')
 

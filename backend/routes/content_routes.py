@@ -234,6 +234,7 @@ def ask_ai_about_step(step_id):
 from flask import Response, stream_with_context
 import time as _time
 import eventlet
+from eventlet import tpool
 
 @content_bp.route('/api/content/fact-check', methods=['POST'])
 def fact_check_claim():
@@ -291,7 +292,7 @@ def fact_check_claim():
                 except Exception:
                     pass
                     
-            eventlet.spawn(save_to_db)
+            tpool.execute(save_to_db)
 
     return Response(stream_with_context(generate_response()), mimetype='text/event-stream')
 

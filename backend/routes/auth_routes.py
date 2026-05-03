@@ -8,6 +8,7 @@ All auth endpoints are rate-limited and protected against brute-force attacks.
 import time
 import secrets
 import eventlet
+from eventlet import tpool
 import logging
 from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify
@@ -165,13 +166,13 @@ def register():
     
     # Generate OTP and send email in background
     otp = generate_otp(email, pending_data)
-    eventlet.spawn(send_otp_email, email, otp)
+    tpool.execute(send_otp_email, email, otp)
     
     logger.info(f'OTP sent for new registration: {email}')
     
     try:
         from services.gcloud_logging_service import log_auth_event
-        eventlet.spawn(log_auth_event, email, 'otp_sent', True, request.remote_addr)
+        tpool.execute(log_auth_event, email, 'otp_sent', True, request.remote_addr)
     except Exception:
         pass
 
@@ -210,7 +211,7 @@ def login():
         _record_failed_attempt(client_ip)
         try:
             from services.gcloud_logging_service import log_auth_event
-            eventlet.spawn(log_auth_event, email, 'login_failed', False, client_ip)
+            tpool.execute(log_auth_event, email, 'login_failed', False, client_ip)
         except Exception:
             pass
         return jsonify({'error': 'Invalid email or password'}), 401
@@ -220,7 +221,7 @@ def login():
         _record_failed_attempt(client_ip)
         try:
             from services.gcloud_logging_service import log_auth_event
-            eventlet.spawn(log_auth_event, email, 'login_failed', False, client_ip)
+            tpool.execute(log_auth_event, email, 'login_failed', False, client_ip)
         except Exception:
             pass
         return jsonify({'error': 'Invalid email or password'}), 401
@@ -231,7 +232,7 @@ def login():
 
     try:
         from services.gcloud_logging_service import log_auth_event
-        eventlet.spawn(log_auth_event, email, 'login_success', True, client_ip)
+        tpool.execute(log_auth_event, email, 'login_success', True, client_ip)
     except Exception:
         pass
 
@@ -285,12 +286,12 @@ def google_login():
         
         # Generate OTP and send in background
         otp = generate_otp(email, pending_data)
-        eventlet.spawn(send_otp_email, email, otp)
+        tpool.execute(send_otp_email, email, otp)
         
         logger.info(f'OTP sent for new Google registration: {email}')
         try:
             from services.gcloud_logging_service import log_auth_event
-            eventlet.spawn(log_auth_event, email, 'otp_sent_google', True, request.remote_addr)
+            tpool.execute(log_auth_event, email, 'otp_sent_google', True, request.remote_addr)
         except Exception:
             pass
 
@@ -349,13 +350,13 @@ def verify_otp_endpoint():
     # Log to Cloud Logging
     try:
         from services.gcloud_logging_service import log_auth_event
-        eventlet.spawn(log_auth_event, email, 'register_verified', True, request.remote_addr)
+        tpool.execute(log_auth_event, email, 'register_verified', True, request.remote_addr)
     except Exception:
         pass
 
     # Send welcome email asynchronously
     try:
-        eventlet.spawn(send_welcome_email, email, pending_data['name'])
+        tpool.execute(send_welcome_email, email, pending_data['name'])
     except Exception:
         pass
 
@@ -446,7 +447,7 @@ def logout():
 
     try:
         from services.gcloud_logging_service import log_auth_event
-        eventlet.spawn(log_auth_event, '', 'logout', True, request.remote_addr)
+        tpool.execute(log_auth_event, '', 'logout', True, request.remote_addr)
     except Exception:
         pass
 

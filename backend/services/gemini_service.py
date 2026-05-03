@@ -129,7 +129,8 @@ class GeminiService:
                                 
                 duration_ms = int((time.time() - start_time) * 1000)
                 import eventlet
-                eventlet.spawn(self._track_usage, agent or 'unknown', duration_ms, True, 'groq')
+from eventlet import tpool
+                tpool.execute(self._track_usage, agent or 'unknown', duration_ms, True, 'groq')
                 return
             except Exception as groq_e:
                 print(f"Groq streaming failed, falling back to Gemini: {groq_e}")
@@ -161,11 +162,13 @@ class GeminiService:
                             
             duration_ms = int((time.time() - start_time) * 1000)
             import eventlet
-            eventlet.spawn(self._track_usage, agent or 'unknown', duration_ms, True, 'gemini')
+from eventlet import tpool
+            tpool.execute(self._track_usage, agent or 'unknown', duration_ms, True, 'gemini')
         except Exception as e:
             duration_ms = int((time.time() - start_time) * 1000)
             import eventlet
-            eventlet.spawn(self._track_usage, agent or 'unknown', duration_ms, False, 'gemini')
+from eventlet import tpool
+            tpool.execute(self._track_usage, agent or 'unknown', duration_ms, False, 'gemini')
             yield f"\n\n[AI service temporarily unavailable. Error: {str(e)}]"
 
     def _generate_json_sync(self, prompt: str, system_instruction: str, agent: str) -> str:
@@ -261,7 +264,8 @@ class GeminiService:
         try:
             from services.gcloud_logging_service import log_agent_action
             import eventlet
-            eventlet.spawn(log_agent_action, agent, f'{provider}_generate', duration_ms)
+from eventlet import tpool
+            tpool.execute(log_agent_action, agent, f'{provider}_generate', duration_ms)
         except Exception:
             pass
 
