@@ -29,12 +29,16 @@ services:
     dns:
       - 8.8.8.8
       - 8.8.4.4
+    extra_hosts:
+      - "metadata.google.internal:169.254.169.254"
     environment:
       - DB_HOST=db
       - DB_USER=user
       - DB_PASSWORD=password
       - DB_NAME=electaverse
       - JWT_SECRET=electaverse-super-secret-key-2026
+      - GOOGLE_CLOUD_PROJECT=electaverse
+      - GCP_PROJECT_ID=electaverse
     env_file:
       - ./backend/.env
     depends_on:
