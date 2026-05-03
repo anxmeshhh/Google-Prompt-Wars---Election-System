@@ -3,6 +3,12 @@ ElectaVerse — Flask Application Entry Point
 Initializes Flask, SocketIO, database, simulation engine, and all API routes.
 """
 
+# ── CRITICAL: Monkey-patch stdlib BEFORE any other imports ──
+# Without this, Gemini/Groq/Firebase HTTP calls block the entire
+# eventlet event loop, freezing ALL concurrent requests (504 timeouts).
+import eventlet
+eventlet.monkey_patch()
+
 import sys
 import os
 import logging
