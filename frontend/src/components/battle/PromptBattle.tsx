@@ -12,17 +12,20 @@ const PERSONAS = [
 
 export default function PromptBattle() {
   const [topic, setTopic] = useState('')
-  const [personaA, setPersonaA] = useState(PERSONAS[0])
-  const [personaB, setPersonaB] = useState(PERSONAS[1])
+  const [personaA, setPersonaA] = useState('Policy Hawk')
+  const [personaB, setPersonaB] = useState('Democracy Dove')
   const [loading, setLoading] = useState(false)
   const [battleData, setBattleData] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [playingTTS, setPlayingTTS] = useState(false)
+  const [audioUrl, setAudioUrl] = useState<string | null>(null)
 
   const handleFight = async () => {
     if (!topic.trim()) return
     setLoading(true)
     setBattleData(null)
     setError(null)
+    setAudioUrl(null)
 
     try {
       const res = await fetch(`${API}/api/battle/start`, {
@@ -48,9 +51,40 @@ export default function PromptBattle() {
         }
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to generate debate.')
+      setError(err.message || 'Failed to simulate debate.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleListen = async () => {
+    if (!battleData || playingTTS) return
+    
+    if (audioUrl) {
+      const audio = new Audio(audioUrl)
+      audio.play()
+      return
+    }
+
+    setPlayingTTS(true)
+    try {
+      const res = await fetch(`${API}/api/ai/tts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        // Strip markdown roughly before TTS
+        body: JSON.stringify({ text: battleData.replace(/[*#]/g, '') }),
+      })
+      if (!res.ok) throw new Error('TTS failed')
+      const data = await res.json()
+      setAudioUrl(data.audio)
+      const audio = new Audio(data.audio)
+      audio.play()
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setPlayingTTS(false)
     }
   }
 
@@ -136,8 +170,20 @@ export default function PromptBattle() {
               padding: 32, borderRadius: 'var(--radius-lg)', background: 'var(--bg-secondary)',
               border: `1px solid var(--border)`,
               boxShadow: `0 8px 32px rgba(0,0,0,0.1)`,
+              position: 'relative'
             }}>
             
+            <div style={{ position: 'absolute', top: 16, right: 16 }}>
+              <button 
+                onClick={handleListen} 
+                disabled={playingTTS || loading}
+                className="btn" 
+                style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', padding: '6px 12px', fontSize: 13 }}
+              >
+                {playingTTS ? 'Loading Audio...' : '🔊 Listen to Debate'}
+              </button>
+            </div>
+
             <div className="markdown-content" style={{ fontSize: 16, lineHeight: 1.7, color: 'var(--text-primary)' }}>
               <ReactMarkdown>{battleData}</ReactMarkdown>
             </div>

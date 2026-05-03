@@ -9,6 +9,7 @@ export default function FactCheck({ token }: { token: string | null }) {
   const [claim, setClaim] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<string | null>(null)
+  const [translating, setTranslating] = useState(false)
 
   const handleVerify = async () => {
     if (!claim.trim()) return
@@ -42,9 +43,31 @@ export default function FactCheck({ token }: { token: string | null }) {
         }
       }
     } catch (err: any) {
-      setResult(`## Verdict: ERROR\\n**Confidence Score:** 0%\\n\\n### Reasoning\\n${err.message || 'Failed to connect to fact-checking service.'}`)
+      setResult(`## Verdict: ERROR\n**Confidence Score:** 0%\n\n### Reasoning\n${err.message || 'Failed to connect to fact-checking service.'}`)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleTranslate = async () => {
+    if (!result) return
+    setTranslating(true)
+    try {
+      const res = await fetch(`${API}/api/ai/translate`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text: result, target: 'hi' }),
+      })
+      if (!res.ok) throw new Error('Translation failed')
+      const data = await res.json()
+      setResult(data.translated)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setTranslating(false)
     }
   }
 
@@ -111,8 +134,20 @@ export default function FactCheck({ token }: { token: string | null }) {
               padding: 32, borderRadius: 'var(--radius-lg)', background: 'var(--bg-secondary)',
               border: `1px solid var(--border)`,
               boxShadow: `0 8px 32px rgba(0,0,0,0.1)`,
+              position: 'relative'
             }}>
             
+            <div style={{ position: 'absolute', top: 16, right: 16 }}>
+              <button 
+                onClick={handleTranslate} 
+                disabled={translating || loading}
+                className="btn" 
+                style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', padding: '6px 12px', fontSize: 13 }}
+              >
+                {translating ? 'Translating...' : 'Aि Translate to Hindi'}
+              </button>
+            </div>
+
             <div className="markdown-content" style={{ fontSize: 16, lineHeight: 1.7, color: 'var(--text-primary)' }}>
               <ReactMarkdown>{result}</ReactMarkdown>
             </div>

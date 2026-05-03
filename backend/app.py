@@ -143,6 +143,7 @@ from routes.battle_routes import battle_bp
 from routes.analytics_routes import analytics_bp, init_app as init_analytics_routes
 from routes.simulation_routes import sim_bp, init_app as init_sim_routes
 from routes.database_routes import db_bp
+from routes.gcloud_ai_routes import ai_bp
 
 # Inject engine into routes that need it
 init_booth_routes(engine)
@@ -161,6 +162,7 @@ app.register_blueprint(battle_bp)
 app.register_blueprint(analytics_bp)
 app.register_blueprint(sim_bp)
 app.register_blueprint(db_bp)
+app.register_blueprint(ai_bp)
 
 
 # ── Health Check ──

@@ -60,6 +60,7 @@ export default function AIAssistant({ token, userRole, stats }: Props) {
   const [history, setHistory] = useState<ChatHistoryItem[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [sentiment, setSentiment] = useState<{score: number, magnitude: number} | null>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   let msgId = useRef(0)
@@ -131,6 +132,16 @@ export default function AIAssistant({ token, userRole, stats }: Props) {
     setLoading(true)
 
     try {
+      // 1. Analyze Sentiment in the background
+      fetch(`${API}/api/ai/sentiment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ text: msg }),
+      }).then(r => r.json()).then(d => {
+        if(d.sentiment) setSentiment(d.sentiment)
+      }).catch(e => console.error("NLP error:", e))
+
+      // 2. Get AI Response
       const res = await fetch(`${API}/api/chat`, {
         method: 'POST',
         headers: {
@@ -276,9 +287,20 @@ export default function AIAssistant({ token, userRole, stats }: Props) {
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             background: 'rgba(255,255,255,0.02)', backdropFilter: 'blur(10px)',
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 500 }}>
-              <Bot size={18} style={{ color: 'var(--color-primary)' }} />
-              ElectaVerse Intelligence
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              {sentiment && (
+                <div style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-secondary)', padding: '4px 10px', borderRadius: 20 }}>
+                  <span title={`Score: ${sentiment.score}, Mag: ${sentiment.magnitude}`}>
+                    {sentiment.score > 0.25 ? '😊 Positive' : sentiment.score < -0.25 ? '😠 Negative' : '😐 Neutral'}
+                  </span>
+                </div>
+              )}
+              <div style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
+                <Shield size={14} /> System Context: 
+                <span style={{ color: 'var(--color-primary-light)' }}>
+                  Phase: {stats?.clock?.phase || 'PRE_POLLING'} | Turnout: {stats?.turnout_percent || 0}%
+                </span>
+              </div>
             </div>
             <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text-muted)' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -292,7 +314,7 @@ export default function AIAssistant({ token, userRole, stats }: Props) {
         )}
 
         {/* Messages */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '32px 0' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '32px 0' }} aria-live="polite">
           <div style={{ maxWidth: 800, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 32, padding: '0 24px' }}>
 
             {messages.length === 0 ? (
