@@ -18,33 +18,35 @@ logger = logging.getLogger('electaverse.email')
 _otp_store: dict[str, dict] = {}
 
 
-def generate_otp(email: str) -> str:
-    """Generate a 6-digit OTP for the given email."""
+def generate_otp(email: str, pending_user_data: dict = None) -> str:
+    """Generate a 6-digit OTP for the given email and store pending data."""
     otp = ''.join(random.choices(string.digits, k=6))
     _otp_store[email.lower()] = {
         'code': otp,
         'expires': datetime.now() + timedelta(minutes=10),
         'attempts': 0,
+        'data': pending_user_data
     }
     return otp
 
 
-def verify_otp(email: str, code: str) -> bool:
-    """Verify an OTP code. Returns True if valid."""
+def verify_otp(email: str, code: str) -> tuple[bool, dict | None]:
+    """Verify an OTP code. Returns (is_valid, pending_data)."""
     entry = _otp_store.get(email.lower())
     if not entry:
-        return False
+        return False, None
     if datetime.now() > entry['expires']:
         _otp_store.pop(email.lower(), None)
-        return False
+        return False, None
     entry['attempts'] += 1
     if entry['attempts'] > 5:
         _otp_store.pop(email.lower(), None)
-        return False
+        return False, None
     if entry['code'] == code:
+        data = entry.get('data')
         _otp_store.pop(email.lower(), None)
-        return True
-    return False
+        return True, data
+    return False, None
 
 
 def send_otp_email(email: str, otp: str) -> bool:

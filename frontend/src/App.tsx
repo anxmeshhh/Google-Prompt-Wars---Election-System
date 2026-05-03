@@ -280,6 +280,9 @@ function AuthPage({ onLogin }: { onLogin: (user: UserData, token: string) => voi
   const [role, setRole] = useState('voter')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [requireOtp, setRequireOtp] = useState(false)
+  const [otpEmail, setOtpEmail] = useState('')
+  const [otpCode, setOtpCode] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -302,9 +305,39 @@ function AuthPage({ onLogin }: { onLogin: (user: UserData, token: string) => voi
         setError(data.error || 'Something went wrong')
         return
       }
+      
+      if (data.require_otp) {
+        setRequireOtp(true)
+        setOtpEmail(data.email)
+        return
+      }
+      
       onLogin(data.user, data.token)
     } catch {
       setError('Cannot connect to server. Is the backend running?')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleOtpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+    try {
+      const res = await fetch(`${API}/api/auth/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: otpEmail, code: otpCode }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error || 'Invalid OTP code')
+        return
+      }
+      onLogin(data.user, data.token)
+    } catch {
+      setError('Cannot connect to server to verify OTP.')
     } finally {
       setLoading(false)
     }
@@ -324,6 +357,13 @@ function AuthPage({ onLogin }: { onLogin: (user: UserData, token: string) => voi
         setError(data.error || 'Google login failed')
         return
       }
+      
+      if (data.require_otp) {
+        setRequireOtp(true)
+        setOtpEmail(data.email)
+        return
+      }
+      
       onLogin(data.user, data.token)
     } catch {
       setError('Cannot connect to server for Google Login.')
@@ -359,27 +399,64 @@ function AuthPage({ onLogin }: { onLogin: (user: UserData, token: string) => voi
           </p>
         </div>
 
-        {/* Toggle */}
-        <div style={{
-          display: 'flex', gap: 4, padding: 4, marginBottom: 24,
-          background: 'var(--bg-surface)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)',
-        }}>
-          {(['login', 'signup'] as const).map(m => (
-            <button key={m} onClick={() => { setMode(m); setError('') }}
-              style={{
-                flex: 1, padding: '8px 0', border: 'none', borderRadius: 6, cursor: 'pointer',
-                fontSize: 13, fontWeight: 600, fontFamily: 'var(--font-body)', transition: 'all 0.25s',
-                background: mode === m ? 'var(--color-primary)' : 'transparent',
-                color: mode === m ? 'white' : 'var(--text-muted)',
-                boxShadow: mode === m ? '0 2px 8px rgba(99,102,241,0.3)' : 'none',
-              }}>
-              {m === 'login' ? 'Sign In' : 'Create Account'}
-            </button>
-          ))}
-        </div>
+        {/* Toggle (hidden if in OTP mode) */}
+        {!requireOtp && (
+          <div style={{
+            display: 'flex', gap: 4, padding: 4, marginBottom: 24,
+            background: 'var(--bg-surface)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)',
+          }}>
+            {(['login', 'signup'] as const).map(m => (
+              <button key={m} onClick={() => { setMode(m); setError('') }}
+                style={{
+                  flex: 1, padding: '8px 0', border: 'none', borderRadius: 6, cursor: 'pointer',
+                  fontSize: 13, fontWeight: 600, fontFamily: 'var(--font-body)', transition: 'all 0.25s',
+                  background: mode === m ? 'var(--color-primary)' : 'transparent',
+                  color: mode === m ? 'white' : 'var(--text-muted)',
+                  boxShadow: mode === m ? '0 2px 8px rgba(99,102,241,0.3)' : 'none',
+                }}>
+                {m === 'login' ? 'Sign In' : 'Create Account'}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {requireOtp ? (
+          <form onSubmit={handleOtpSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ textAlign: 'center', marginBottom: 12 }}>
+              <div style={{ fontSize: 40, marginBottom: 8 }}>📩</div>
+              <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>Check your email</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>
+                We sent a 6-digit verification code to <strong>{otpEmail}</strong>.
+              </p>
+            </div>
+            
+            <InputField icon={<Lock size={16} />} type="text" placeholder="6-digit OTP Code"
+              value={otpCode} onChange={setOtpCode} autoComplete="one-time-code" />
+              
+            {error && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                style={{ padding: '10px 14px', borderRadius: 'var(--radius-sm)', background: 'rgba(239,68,68,0.1)', color: 'var(--color-danger)', fontSize: 13 }}>
+                {error}
+              </motion.div>
+            )}
+
+            <button type="submit" disabled={loading || otpCode.length !== 6} className="btn btn-primary" style={{
+              width: '100%', padding: '12px', justifyContent: 'center', fontSize: 15, fontWeight: 600, marginTop: 8,
+              opacity: (loading || otpCode.length !== 6) ? 0.7 : 1,
+            }}>
+              {loading ? 'Verifying...' : 'Verify & Continue'}
+              {!loading && <ChevronRight size={16} />}
+            </button>
+            
+            <button type="button" onClick={() => { setRequireOtp(false); setOtpCode('') }} style={{
+              background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 13, marginTop: 8, cursor: 'pointer', textDecoration: 'underline'
+            }}>
+              Go back
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Name (signup only) */}
           <AnimatePresence>
             {mode === 'signup' && (
@@ -392,11 +469,12 @@ function AuthPage({ onLogin }: { onLogin: (user: UserData, token: string) => voi
           </AnimatePresence>
 
           <InputField icon={<Mail size={16} />} type="email" placeholder="Email Address"
-            value={email} onChange={setEmail} />
+            value={email} onChange={setEmail} autoComplete="username" />
 
           <div style={{ position: 'relative' }}>
             <InputField icon={<Lock size={16} />} type={showPw ? 'text' : 'password'}
-              placeholder="Password" value={password} onChange={setPassword} />
+              placeholder="Password" value={password} onChange={setPassword} 
+              autoComplete={mode === 'login' ? 'current-password' : 'new-password'} />
             <button type="button" onClick={() => setShowPw(!showPw)} style={{
               position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
               background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)',
@@ -463,6 +541,7 @@ function AuthPage({ onLogin }: { onLogin: (user: UserData, token: string) => voi
             />
           </div>
         </form>
+        )}
 
         <p style={{ textAlign: 'center', marginTop: 20, fontSize: 12, color: 'var(--text-muted)' }}>
           Powered by Google Gemini · Agentic AI Election Intelligence
@@ -475,8 +554,8 @@ function AuthPage({ onLogin }: { onLogin: (user: UserData, token: string) => voi
 
 
 // ── Input Field ──
-function InputField({ icon, type, placeholder, value, onChange, id }: {
-  icon: React.ReactNode; type: string; placeholder: string; value: string; onChange: (v: string) => void; id?: string
+function InputField({ icon, type, placeholder, value, onChange, id, autoComplete }: {
+  icon: React.ReactNode; type: string; placeholder: string; value: string; onChange: (v: string) => void; id?: string; autoComplete?: string
 }) {
   return (
     <div style={{
@@ -485,14 +564,10 @@ function InputField({ icon, type, placeholder, value, onChange, id }: {
       background: 'var(--bg-surface)', border: '1px solid var(--border)',
       transition: 'border-color 0.2s',
     }}>
-      <span style={{ color: 'var(--text-muted)', display: 'flex' }} aria-hidden="true">{icon}</span>
-      <input type={type} placeholder={placeholder} value={value}
-        id={id} aria-label={placeholder}
-        onChange={e => onChange(e.target.value)} required
-        style={{
-          flex: 1, background: 'none', border: 'none', outline: 'none',
-          color: 'var(--text-primary)', fontSize: 14, fontFamily: 'var(--font-body)',
-        }} />
+      <div style={{ color: 'var(--text-muted)', marginRight: 12, display: 'flex' }}>{icon}</div>
+      <input type={type} id={id} placeholder={placeholder} value={value} onChange={e => onChange(e.target.value)}
+        autoComplete={autoComplete}
+        style={{ flex: 1, background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: 15, outline: 'none', width: '100%' }} />
     </div>
   )
 }

@@ -17,12 +17,13 @@ from config import Config
 from db.connection import Database
 from services.security import (
     create_access_token, create_refresh_token, verify_token,
-    encrypt_pii, blacklist_token, check_password_strength
+    encrypt_pii, blacklist_token
 )
 from services.email_service import (
     generate_otp, verify_otp, send_otp_email, send_welcome_email
 )
 from utils.validators import validate_email, validate_password, validate_role
+from extensions import limiter
 
 auth_bp = Blueprint('auth', __name__)
 logger = logging.getLogger('electaverse.auth')
@@ -121,6 +122,7 @@ def _create_auth_response(user: dict) -> dict:
 
 
 @auth_bp.route('/api/auth/register', methods=['POST'])
+@limiter.limit("5 per minute")
 def register():
     """Register a new user with email/password."""
     data = request.get_json()
@@ -147,43 +149,40 @@ def register():
     if existing:
         return jsonify({'error': 'An account with this email already exists'}), 409
 
-    # Hash password and insert
+    # Hash password
     pw_hash = generate_password_hash(password)
-    try:
-        Database.execute_write(
-            """INSERT INTO users (name, email, password_hash, role, constituency_id)
-               VALUES (%s, %s, %s, %s, %s)""",
-            (name, email, pw_hash, role, constituency_id)
-        )
-    except Exception as e:
-        logger.error(f'Registration failed for {email}: {e}')
-        return jsonify({'error': 'Registration failed. Please try again.'}), 500
-
-    # Fetch the new user
-    user = Database.execute_one(
-        "SELECT id, name, email, role, constituency_id, created_at FROM users WHERE email = %s",
-        (email,)
-    )
-
-    logger.info(f'New user registered: {email} (role={role})')
-
-    # Log to Cloud Logging
+    
+    # Store pending user data
+    pending_data = {
+        'name': name,
+        'email': email,
+        'password_hash': pw_hash,
+        'role': role,
+        'constituency_id': constituency_id,
+        'is_google': False
+    }
+    
+    # Generate OTP and send email
+    otp = generate_otp(email, pending_data)
+    send_otp_email(email, otp)
+    
+    logger.info(f'OTP sent for new registration: {email}')
+    
     try:
         from services.gcloud_logging_service import log_auth_event
-        log_auth_event(email, 'register', True, request.remote_addr)
+        log_auth_event(email, 'otp_sent', True, request.remote_addr)
     except Exception:
         pass
 
-    # Send welcome email (async-safe, non-blocking)
-    try:
-        send_welcome_email(email, name)
-    except Exception:
-        pass  # Don't fail registration if email fails
-
-    return jsonify(_create_auth_response(user)), 201
+    return jsonify({
+        'require_otp': True,
+        'email': email,
+        'message': 'OTP sent to email. Please verify to complete registration.'
+    }), 200
 
 
 @auth_bp.route('/api/auth/login', methods=['POST'])
+@limiter.limit("5 per minute")
 def login():
     """Authenticate with email and password. Returns JWT + session tokens."""
     client_ip = request.remote_addr
@@ -239,6 +238,7 @@ def login():
 
 
 @auth_bp.route('/api/auth/google', methods=['POST'])
+@limiter.limit("5 per minute")
 def google_login():
     """Login or register with Google OAuth. Returns JWT + session tokens."""
     data = request.get_json()
@@ -269,27 +269,96 @@ def google_login():
     )
 
     if not user:
-        # Register new user from Google
+        # User is brand new, enforce OTP verification
         if role not in ('voter', 'official', 'observer'):
             role = 'voter'
-        pw_hash = generate_password_hash(secrets.token_hex(16))
-        Database.execute_write(
-            "INSERT INTO users (name, email, password_hash, role) VALUES (%s, %s, %s, %s)",
-            (name, email, pw_hash, role)
-        )
-        user = Database.execute_one(
-            "SELECT id, name, email, role, constituency_id, created_at FROM users WHERE email = %s",
-            (email,)
-        )
-        logger.info(f'New Google user registered: {email}')
-
-        # Send welcome email
+            
+        pending_data = {
+            'name': name,
+            'email': email,
+            'password_hash': generate_password_hash(secrets.token_hex(16)),
+            'role': role,
+            'constituency_id': None,
+            'is_google': True
+        }
+        
+        # Generate OTP and send
+        otp = generate_otp(email, pending_data)
+        send_otp_email(email, otp)
+        
+        logger.info(f'OTP sent for new Google registration: {email}')
         try:
-            send_welcome_email(email, name)
+            from services.gcloud_logging_service import log_auth_event
+            log_auth_event(email, 'otp_sent_google', True, request.remote_addr)
         except Exception:
             pass
 
+        return jsonify({
+            'require_otp': True,
+            'email': email,
+            'is_google': True,
+            'message': 'Please verify your email with the OTP sent to complete Google Sign-in.'
+        }), 200
+
+    # User already exists, log them in instantly
+    logger.info(f'Google user logged in: {email}')
     return jsonify(_create_auth_response(user))
+
+
+@auth_bp.route('/api/auth/verify-otp', methods=['POST'])
+@limiter.limit("3 per minute")
+def verify_otp_endpoint():
+    """Verify OTP and finalize registration."""
+    data = request.get_json()
+    email = data.get('email', '').strip().lower()
+    code = data.get('code', '').strip()
+    
+    if not email or not code:
+        return jsonify({'error': 'Email and code are required'}), 400
+        
+    is_valid, pending_data = verify_otp(email, code)
+    if not is_valid or not pending_data:
+        return jsonify({'error': 'Invalid or expired OTP'}), 401
+        
+    # Valid OTP -> Create the user!
+    try:
+        Database.execute_write(
+            """INSERT INTO users (name, email, password_hash, role, constituency_id)
+               VALUES (%s, %s, %s, %s, %s)""",
+            (
+                pending_data['name'], 
+                pending_data['email'], 
+                pending_data['password_hash'], 
+                pending_data['role'], 
+                pending_data['constituency_id']
+            )
+        )
+    except Exception as e:
+        logger.error(f'OTP Registration insert failed for {email}: {e}')
+        return jsonify({'error': 'Registration failed. Please try again.'}), 500
+
+    # Fetch the new user
+    user = Database.execute_one(
+        "SELECT id, name, email, role, constituency_id, created_at FROM users WHERE email = %s",
+        (email,)
+    )
+
+    logger.info(f'New user verified via OTP: {email} (role={pending_data["role"]})')
+
+    # Log to Cloud Logging
+    try:
+        from services.gcloud_logging_service import log_auth_event
+        log_auth_event(email, 'register_verified', True, request.remote_addr)
+    except Exception:
+        pass
+
+    # Send welcome email asynchronously
+    try:
+        send_welcome_email(email, pending_data['name'])
+    except Exception:
+        pass
+
+    return jsonify(_create_auth_response(user)), 201
 
 
 @auth_bp.route('/api/auth/refresh', methods=['POST'])

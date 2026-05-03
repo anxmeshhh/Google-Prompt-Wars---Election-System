@@ -27,10 +27,8 @@ logger = logging.getLogger('electaverse')
 from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_socketio import SocketIO
-from flask_caching import Cache
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 from flask_talisman import Talisman
+from extensions import limiter, cache
 from config import Config
 from db.connection import Database
 from simulation.engine import SimulationEngine
@@ -40,15 +38,8 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = Config.SECRET_KEY
 
 # ── Extensions ──
-cache = Cache(config={'CACHE_TYPE': 'SimpleCache', 'CACHE_DEFAULT_TIMEOUT': 60})
 cache.init_app(app)
-
-limiter = Limiter(
-    get_remote_address,
-    app=app,
-    default_limits=["500 per day", "100 per hour"],
-    storage_uri="memory://"
-)
+limiter.init_app(app)
 
 # ── CORS — must be FIRST, before Talisman intercepts OPTIONS preflights ──
 CORS(app,
