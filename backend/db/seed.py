@@ -10,7 +10,7 @@ Usage:
 import sys
 import os
 import random
-import mysql.connector
+import pymysql
 
 # Add parent dir to path so we can import config
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -37,7 +37,7 @@ BOOTHS_PER_CONSTITUENCY = 20  # 200 total booths
 
 def create_database():
     """Create the database if it doesn't exist."""
-    conn = mysql.connector.connect(
+    conn = pymysql.connect(
         host=Config.DB_HOST,
         user=Config.DB_USER,
         password=Config.DB_PASSWORD,
@@ -55,7 +55,7 @@ def run_schema():
     with open(schema_path, 'r') as f:
         schema_sql = f.read()
 
-    conn = mysql.connector.connect(
+    conn = pymysql.connect(
         host=Config.DB_HOST,
         user=Config.DB_USER,
         password=Config.DB_PASSWORD,
@@ -67,10 +67,11 @@ def run_schema():
         if stmt:
             try:
                 cursor.execute(stmt)
-            except mysql.connector.Error as e:
+            except pymysql.Error as e:
                 # Skip non-critical errors (e.g., duplicate key on re-run)
-                if e.errno not in (1061, 1062):  # Duplicate key/index
-                    print(f"  ⚠️  {e.msg}")
+                err_code = e.args[0]
+                if err_code not in (1061, 1062):  # Duplicate key/index
+                    print(f"  ⚠️  {e.args[1] if len(e.args) > 1 else e}")
     conn.commit()
     cursor.close()
     conn.close()
@@ -79,7 +80,7 @@ def run_schema():
 
 def seed_constituencies():
     """Insert constituency master data."""
-    conn = mysql.connector.connect(
+    conn = pymysql.connect(
         host=Config.DB_HOST,
         user=Config.DB_USER,
         password=Config.DB_PASSWORD,
@@ -103,7 +104,7 @@ def seed_constituencies():
 
 def seed_booths():
     """Generate and insert booths across all constituencies."""
-    conn = mysql.connector.connect(
+    conn = pymysql.connect(
         host=Config.DB_HOST,
         user=Config.DB_USER,
         password=Config.DB_PASSWORD,
@@ -145,7 +146,7 @@ def seed_booths():
 
 def verify():
     """Verify the seed by printing summary stats."""
-    conn = mysql.connector.connect(
+    conn = pymysql.connect(
         host=Config.DB_HOST,
         user=Config.DB_USER,
         password=Config.DB_PASSWORD,
