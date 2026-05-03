@@ -4,6 +4,7 @@ from google.cloud import translate_v2 as translate
 from google.cloud import language_v2
 from google.cloud import texttospeech
 from google.api_core.exceptions import GoogleAPIError
+import concurrent.futures
 
 logger = logging.getLogger('electaverse.gcloud_ai')
 
@@ -11,6 +12,9 @@ class GCloudAIService:
     """Wrapper for Google Cloud Translate, Natural Language, and Text-to-Speech APIs."""
     
     def __init__(self):
+        # Thread pool to prevent C-extension network calls from blocking Eventlet
+        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=10)
+        
         # We catch credential errors silently if running locally without ADC
         self.translate_client = None
         self.nlp_client = None
@@ -31,10 +35,13 @@ class GCloudAIService:
         if not self.translate_client:
             return f"[Translation Offline] {text}"
             
-        try:
+        def _sync_translate():
             result = self.translate_client.translate(text, target_language=target_language)
             return result.get('translatedText', text)
-        except GoogleAPIError as e:
+            
+        try:
+            return self.executor.submit(_sync_translate).result()
+        except Exception as e:
             logger.error(f"Translation API error: {e}")
             return text
 
@@ -43,7 +50,7 @@ class GCloudAIService:
         if not self.nlp_client:
             return {"score": 0.0, "magnitude": 0.0}
             
-        try:
+        def _sync_analyze():
             document = language_v2.Document(
                 content=text, 
                 type_=language_v2.Document.Type.PLAIN_TEXT
@@ -51,12 +58,14 @@ class GCloudAIService:
             response = self.nlp_client.analyze_sentiment(
                 request={'document': document}
             )
-            sentiment = response.document_sentiment
             return {
-                "score": round(sentiment.score, 2),
-                "magnitude": round(sentiment.magnitude, 2)
+                "score": round(response.document_sentiment.score, 2),
+                "magnitude": round(response.document_sentiment.magnitude, 2)
             }
-        except GoogleAPIError as e:
+            
+        try:
+            return self.executor.submit(_sync_analyze).result()
+        except Exception as e:
             logger.error(f"NLP API error: {e}")
             return {"score": 0.0, "magnitude": 0.0}
 
@@ -65,7 +74,7 @@ class GCloudAIService:
         if not self.tts_client:
             return b""
             
-        try:
+        def _sync_tts():
             synthesis_input = texttospeech.SynthesisInput(text=text[:1000]) # Cap to 1000 chars for safety
             voice = texttospeech.VoiceSelectionParams(
                 language_code=language_code,
@@ -74,11 +83,13 @@ class GCloudAIService:
             audio_config = texttospeech.AudioConfig(
                 audio_encoding=texttospeech.AudioEncoding.MP3
             )
-            
             response = self.tts_client.synthesize_speech(
                 input=synthesis_input, voice=voice, audio_config=audio_config
             )
             return response.audio_content
-        except GoogleAPIError as e:
+            
+        try:
+            return self.executor.submit(_sync_tts).result()
+        except Exception as e:
             logger.error(f"TTS API error: {e}")
             return b""
