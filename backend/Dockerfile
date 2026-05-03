@@ -26,6 +26,9 @@ ENV FLASK_APP=app.py
 ENV FLASK_ENV=production
 ENV PYTHONUNBUFFERED=1
 
-# Run with Gunicorn using Eventlet for WebSocket support
-# --timeout 120: Gemini→Groq fallback can take 40s+; default 30s kills workers
-CMD ["gunicorn", "-k", "eventlet", "-w", "1", "-b", "0.0.0.0:5000", "--timeout", "120", "app:app"]
+# Copy and set entrypoint script
+COPY entrypoint.sh .
+RUN chmod +x entrypoint.sh
+
+# Seed DB + start Gunicorn (seeds are idempotent via ON DUPLICATE KEY)
+ENTRYPOINT ["./entrypoint.sh"]
