@@ -52,6 +52,7 @@ jobs:
         CLOUD_LOGGING_ENABLED: "false"
       run: |
         cd backend
+        python db/seed.py
         pytest tests/ -v --cov=. --cov-report=term-missing --cov-fail-under=60
 
     - name: Upload coverage report

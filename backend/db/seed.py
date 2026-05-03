@@ -152,7 +152,7 @@ def verify():
         password=Config.DB_PASSWORD,
         database=Config.DB_NAME,
     )
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
 
     cursor.execute("SELECT COUNT(*) as count FROM constituencies")
     print(f"\n📊 Constituencies: {cursor.fetchone()['count']}")
