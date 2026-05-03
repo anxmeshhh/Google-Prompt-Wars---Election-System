@@ -14,6 +14,12 @@ services:
     volumes:
       - db_data:/var/lib/mysql
       - ./backend/db/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   backend:
     build: ./backend
@@ -29,9 +35,8 @@ services:
     env_file:
       - .env
     depends_on:
-      - db
-    # In a real production deployment, you might use a script to wait for MySQL to be ready,
-    # but pooling/reconnect logic in backend usually handles it.
+      db:
+        condition: service_healthy
 
   frontend:
     build: ./frontend

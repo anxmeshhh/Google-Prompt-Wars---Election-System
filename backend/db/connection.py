@@ -15,19 +15,32 @@ class Database:
 
     @classmethod
     def initialize(cls):
-        """Create the connection pool. Call once at app startup."""
+        """Create the connection pool. Retries up to 10 times for Docker startup."""
         if cls._pool is not None:
             return
-        cls._pool = pooling.MySQLConnectionPool(
-            pool_name='electaverse_pool',
-            pool_size=32,
-            pool_reset_session=True,
-            host=Config.DB_HOST,
-            user=Config.DB_USER,
-            password=Config.DB_PASSWORD,
-            database=Config.DB_NAME,
-            autocommit=True,
-        )
+        import time
+        import logging
+        logger = logging.getLogger('electaverse.db')
+        for attempt in range(1, 11):
+            try:
+                cls._pool = pooling.MySQLConnectionPool(
+                    pool_name='electaverse_pool',
+                    pool_size=32,
+                    pool_reset_session=True,
+                    host=Config.DB_HOST,
+                    user=Config.DB_USER,
+                    password=Config.DB_PASSWORD,
+                    database=Config.DB_NAME,
+                    autocommit=True,
+                )
+                logger.info(f'Database pool created (attempt {attempt})')
+                return
+            except Exception as e:
+                logger.warning(f'DB connect attempt {attempt}/10 failed: {e}')
+                if attempt < 10:
+                    time.sleep(3)
+                else:
+                    raise
 
     @classmethod
     def get_connection(cls):
