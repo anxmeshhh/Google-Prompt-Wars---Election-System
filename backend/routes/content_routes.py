@@ -231,6 +231,10 @@ def ask_ai_about_step(step_id):
 # AI FACT CHECKER
 # ═══════════════════════════════════════════════════
 
+from flask import Response, stream_with_context
+import time as _time
+import eventlet
+
 @content_bp.route('/api/content/fact-check', methods=['POST'])
 def fact_check_claim():
     """Verify a user claim using the FactCheckerAgent."""
@@ -251,39 +255,45 @@ def fact_check_claim():
     from agents.fact_checker import FactCheckerAgent
     agent = FactCheckerAgent()
     
-    result = agent.verify_claim(claim, live_context)
+    def generate_response():
+        _start = _time.time()
+        full_response = ""
+        
+        try:
+            for chunk in agent.verify_claim_stream(claim, live_context):
+                full_response += chunk
+                yield chunk
+        finally:
+            _duration_ms = int((_time.time() - _start) * 1000)
+            
+            def save_to_db():
+                from db.connection import Database
+                try:
+                    Database.execute_write(
+                        """INSERT INTO fact_check_history (user_id, claim, verdict, confidence_score, reasoning)
+                           VALUES (%s, %s, %s, %s, %s)""",
+                        (user['id'], claim, 'STREAMED', 0, full_response)
+                    )
+                except Exception as e:
+                    print(f"Failed to save fact check to DB: {e}")
 
-    from db.connection import Database
-    try:
-        Database.execute_write(
-            """INSERT INTO fact_check_history (user_id, claim, verdict, confidence_score, reasoning)
-               VALUES (%s, %s, %s, %s, %s)""",
-            (user['id'], claim, result.get('verdict', 'ERROR'), result.get('confidence_score', 0), result.get('reasoning', ''))
-        )
-    except Exception as e:
-        print(f"Failed to save fact check to DB: {e}")
+                # Archive to Firebase Firestore
+                try:
+                    from services.firebase_service import save_fact_check
+                    save_fact_check(user['id'], claim, {'reasoning': full_response})
+                except Exception:
+                    pass
 
-    # Archive to Firebase Firestore
-    try:
-        from services.firebase_service import save_fact_check
-        save_fact_check(user['id'], claim, result)
-    except Exception:
-        pass
+                # Persist report to Google Cloud Storage
+                try:
+                    from services.gcs_service import save_fact_check_report
+                    save_fact_check_report(user['id'], claim, {'reasoning': full_response})
+                except Exception:
+                    pass
+                    
+            eventlet.spawn(save_to_db)
 
-    # Persist report to Google Cloud Storage
-    try:
-        from services.gcs_service import save_fact_check_report
-        save_fact_check_report(user['id'], claim, result)
-    except Exception:
-        pass
-
-    return jsonify({
-        'claim': claim,
-        'verdict': result.get('verdict', 'ERROR'),
-        'confidence_score': result.get('confidence_score', 0),
-        'reasoning': result.get('reasoning', 'Analysis failed.'),
-        'official_sources': result.get('official_sources', [])
-    })
+    return Response(stream_with_context(generate_response()), mimetype='text/event-stream')
 
 # ═══════════════════════════════════════════════════
 # VOTER IQ QUIZ

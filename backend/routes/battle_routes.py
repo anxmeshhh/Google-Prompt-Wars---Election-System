@@ -3,7 +3,9 @@ ElectaVerse — Battle (Prompt Wars) API Routes
 Generates AI-vs-AI policy debates and persists them to MySQL, GCS, and Firebase.
 """
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, Response, stream_with_context
+import eventlet
+import time as _time
 
 battle_bp = Blueprint('battle', __name__)
 
@@ -22,59 +24,63 @@ def start_battle():
     from agents.debate_moderator import DebateModeratorAgent
     agent = DebateModeratorAgent()
 
-    result = agent.generate_debate(topic, persona_a, persona_b)
+    def generate_response():
+        _start = _time.time()
+        full_response = ""
+        
+        try:
+            for chunk in agent.generate_debate_stream(topic, persona_a, persona_b):
+                full_response += chunk
+                yield chunk
+        finally:
+            _duration_ms = int((_time.time() - _start) * 1000)
+            
+            def save_to_db():
+                from db.connection import Database
+                import json
+                import uuid
+                battle_id = str(uuid.uuid4())
+                try:
+                    Database.execute_write(
+                        """INSERT INTO prompt_battles (id, topic, persona_a, persona_b, debate_transcript, winner)
+                           VALUES (%s, %s, %s, %s, %s, %s)""",
+                        (battle_id, topic, persona_a, persona_b, json.dumps({'markdown': full_response}), 'Draw')
+                    )
+                except Exception as e:
+                    print(f"Failed to save battle to DB: {e}")
 
-    from db.connection import Database
-    import json
-    import uuid
+                # Persist to Google Cloud Storage
+                try:
+                    from services.gcs_service import save_debate_transcript
+                    save_debate_transcript(battle_id, {
+                        'topic': topic,
+                        'persona_a': persona_a,
+                        'persona_b': persona_b,
+                        'result': full_response,
+                    })
+                except Exception:
+                    pass
 
-    # Insert into MySQL database
-    battle_id = str(uuid.uuid4())
-    try:
-        Database.execute_write(
-            """INSERT INTO prompt_battles (id, topic, persona_a, persona_b, debate_transcript, winner)
-               VALUES (%s, %s, %s, %s, %s, %s)""",
-            (battle_id, topic, persona_a, persona_b, json.dumps(result.get('debate', [])), result.get('winner', 'Draw'))
-        )
-    except Exception as e:
-        print(f"Failed to save battle to DB: {e}")
+                # Archive in Firebase Firestore
+                try:
+                    from services.firebase_service import save_debate
+                    save_debate(battle_id, {
+                        'topic': topic,
+                        'persona_a': persona_a,
+                        'persona_b': persona_b,
+                        'winner': 'Draw',
+                    })
+                except Exception:
+                    pass
 
-    # Persist to Google Cloud Storage
-    try:
-        from services.gcs_service import save_debate_transcript
-        save_debate_transcript(battle_id, {
-            'topic': topic,
-            'persona_a': persona_a,
-            'persona_b': persona_b,
-            'result': result,
-        })
-    except Exception:
-        pass  # GCS is supplementary — don't fail the request
+                # Log to Google Cloud Logging
+                try:
+                    from services.gcloud_logging_service import log_agent_action
+                    log_agent_action('DebateModerator', 'debate_generated', _duration_ms)
+                except Exception:
+                    pass
 
-    # Archive in Firebase Firestore
-    try:
-        from services.firebase_service import save_debate
-        save_debate(battle_id, {
-            'topic': topic,
-            'persona_a': persona_a,
-            'persona_b': persona_b,
-            'winner': result.get('winner', 'Draw'),
-        })
-    except Exception:
-        pass
+            eventlet.spawn(save_to_db)
 
-    # Log to Google Cloud Logging
-    try:
-        from services.gcloud_logging_service import log_agent_action
-        log_agent_action('DebateModerator', 'debate_generated')
-    except Exception:
-        pass
-
-    return jsonify({
-        'id': battle_id,
-        'topic': topic,
-        'persona_a': persona_a,
-        'persona_b': persona_b,
-        'battle_data': result
-    })
+    return Response(stream_with_context(generate_response()), mimetype='text/event-stream')
 

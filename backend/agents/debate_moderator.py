@@ -12,67 +12,35 @@ class DebateModeratorAgent:
         You are the ElectaVerse Debate Moderator for the "Prompt Wars" Arena.
         Your job is to simulate a fierce, highly intellectual, and objective debate between two specific AI Personas on a given Indian electoral or policy topic.
 
-        You must output ONLY a valid JSON object matching this exact schema:
-        {
-            "persona_a_name": "Name of Persona A",
-            "persona_b_name": "Name of Persona B",
-            "arguments_a": [
-                {
-                    "point": "A strong, 2-sentence argument from Persona A's perspective.",
-                    "logic_score": 85,
-                    "evidence_score": 90,
-                    "persuasion_score": 75
-                },
-                {
-                    "point": "Another strong argument from Persona A.",
-                    "logic_score": 80,
-                    "evidence_score": 70,
-                    "persuasion_score": 88
-                }
-            ],
-            "arguments_b": [
-                {
-                    "point": "A strong, 2-sentence counter-argument from Persona B's perspective.",
-                    "logic_score": 90,
-                    "evidence_score": 85,
-                    "persuasion_score": 80
-                },
-                {
-                    "point": "Another strong argument from Persona B.",
-                    "logic_score": 75,
-                    "evidence_score": 80,
-                    "persuasion_score": 95
-                }
-            ],
-            "verdict": "A completely objective, 2-sentence summary of who made the stronger case and why. Do not sit on the fence."
-        }
+        Instead of JSON, you must format your response exactly in this Markdown structure so it can be streamed to the audience:
 
-        Rules:
-        - Scores must be integers between 0 and 100.
-        - Exactly 2 arguments per persona.
-        - The arguments MUST directly clash with each other.
-        - Do NOT include markdown blocks (` ```json `). Return the raw JSON string.
+        # Debate: [Topic]
+
+        ## Red Corner: [Persona A Name]
+        **Argument 1:** [Strong, 2-sentence argument]
+        *(Logic: 85/100, Evidence: 90/100, Persuasion: 75/100)*
+
+        **Argument 2:** [Another strong argument]
+        *(Logic: 80/100, Evidence: 70/100, Persuasion: 88/100)*
+
+        ---
+
+        ## Blue Corner: [Persona B Name]
+        **Argument 1:** [Strong, 2-sentence counter-argument]
+        *(Logic: 90/100, Evidence: 85/100, Persuasion: 80/100)*
+
+        **Argument 2:** [Another strong argument]
+        *(Logic: 75/100, Evidence: 80/100, Persuasion: 95/100)*
+
+        ---
+
+        ## Moderator Verdict
+        [A completely objective, 2-sentence summary of who made the stronger case and why. Do not sit on the fence.]
         """
 
-    def generate_debate(self, topic: str, persona_a: str, persona_b: str) -> dict:
-        """Simulate a debate on a topic between two personas."""
-        prompt = f"""
-        Topic: {topic}
-        Persona A: {persona_a}
-        Persona B: {persona_b}
+    def generate_debate_stream(self, topic: str, persona_a: str, persona_b: str):
+        """Simulate a debate and stream the markdown output."""
+        prompt = f"Topic: {topic}\\nPersona A: {persona_a}\\nPersona B: {persona_b}\\n\\nGenerate the debate now."
         
-        Generate the debate JSON now.
-        """
-        
-        try:
-            raw_response = self.gemini.generate_json(prompt, system_instruction=self.system_prompt)
-            return json.loads(raw_response, strict=False)
-        except Exception as e:
-            print(f"Error in Debate Moderator Agent: {e}")
-            return {
-                "persona_a_name": persona_a,
-                "persona_b_name": persona_b,
-                "arguments_a": [{"point": "Failed to generate argument.", "logic_score": 0, "evidence_score": 0, "persuasion_score": 0}],
-                "arguments_b": [{"point": "Failed to generate argument.", "logic_score": 0, "evidence_score": 0, "persuasion_score": 0}],
-                "verdict": "Debate engine offline due to error."
-            }
+        for chunk in self.gemini.generate_stream(prompt, system_instruction=self.system_prompt, agent='debate_moderator'):
+            yield chunk

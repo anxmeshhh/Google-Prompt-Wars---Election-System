@@ -1,21 +1,14 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Loader2, ShieldAlert, CheckCircle2, AlertTriangle, XCircle, ExternalLink, RefreshCw } from 'lucide-react'
+import { Search, Loader2, ShieldAlert, RefreshCw } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
 
 import { API } from '../../config'
-
-interface VerdictResult {
-  claim: string
-  verdict: 'TRUE' | 'FALSE' | 'MISLEADING' | 'ERROR'
-  confidence_score: number
-  reasoning: string
-  official_sources: string[]
-}
 
 export default function FactCheck({ token }: { token: string | null }) {
   const [claim, setClaim] = useState('')
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<VerdictResult | null>(null)
+  const [result, setResult] = useState<string | null>(null)
 
   const handleVerify = async () => {
     if (!claim.trim()) return
@@ -31,37 +24,27 @@ export default function FactCheck({ token }: { token: string | null }) {
         },
         body: JSON.stringify({ claim }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Verification failed')
-      setResult(data)
+      if (!res.ok) throw new Error('Verification failed')
+      if (!res.body) throw new Error('ReadableStream not supported')
+
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let done = false
+      let fullText = ""
+
+      while (!done) {
+        const { value, done: doneReading } = await reader.read()
+        done = doneReading
+        if (value) {
+          const chunk = decoder.decode(value, { stream: true })
+          fullText += chunk
+          setResult(fullText)
+        }
+      }
     } catch (err: any) {
-      setResult({
-        claim,
-        verdict: 'ERROR',
-        confidence_score: 0,
-        reasoning: err.message || 'Failed to connect to fact-checking service.',
-        official_sources: []
-      })
+      setResult(`## Verdict: ERROR\\n**Confidence Score:** 0%\\n\\n### Reasoning\\n${err.message || 'Failed to connect to fact-checking service.'}`)
     } finally {
       setLoading(false)
-    }
-  }
-
-  const getVerdictColor = (verdict: string) => {
-    switch (verdict) {
-      case 'TRUE': return 'var(--color-success)'
-      case 'FALSE': return 'var(--color-danger)'
-      case 'MISLEADING': return 'var(--color-warning)'
-      default: return 'var(--text-muted)'
-    }
-  }
-
-  const getVerdictIcon = (verdict: string) => {
-    switch (verdict) {
-      case 'TRUE': return <CheckCircle2 size={32} style={{ color: 'var(--color-success)' }} />
-      case 'FALSE': return <XCircle size={32} style={{ color: 'var(--color-danger)' }} />
-      case 'MISLEADING': return <AlertTriangle size={32} style={{ color: 'var(--color-warning)' }} />
-      default: return <ShieldAlert size={32} style={{ color: 'var(--text-muted)' }} />
     }
   }
 
@@ -122,65 +105,17 @@ export default function FactCheck({ token }: { token: string | null }) {
 
       {/* Results Area */}
       <AnimatePresence>
-        {result && !loading && (
+        {result && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
             style={{
               padding: 32, borderRadius: 'var(--radius-lg)', background: 'var(--bg-secondary)',
-              border: `2px solid ${getVerdictColor(result.verdict)}`,
-              boxShadow: `0 8px 32px ${getVerdictColor(result.verdict)}15`,
+              border: `1px solid var(--border)`,
+              boxShadow: `0 8px 32px rgba(0,0,0,0.1)`,
             }}>
             
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                {getVerdictIcon(result.verdict)}
-                <div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1, fontWeight: 600, marginBottom: 4 }}>
-                    AI Verdict
-                  </div>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: getVerdictColor(result.verdict), letterSpacing: 1 }}>
-                    {result.verdict}
-                  </div>
-                </div>
-              </div>
-              
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1, fontWeight: 600, marginBottom: 4 }}>
-                  Confidence
-                </div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)' }}>
-                  {result.confidence_score}%
-                </div>
-              </div>
+            <div className="markdown-content" style={{ fontSize: 16, lineHeight: 1.7, color: 'var(--text-primary)' }}>
+              <ReactMarkdown>{result}</ReactMarkdown>
             </div>
-
-            <div style={{ padding: 20, background: 'rgba(0,0,0,0.2)', borderRadius: 'var(--radius-md)', marginBottom: 24 }}>
-              <div style={{ fontSize: 12, color: 'var(--color-primary-light)', textTransform: 'uppercase', letterSpacing: 1, fontWeight: 600, marginBottom: 8 }}>
-                Detailed Reasoning
-              </div>
-              <div style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.7 }}>
-                {result.reasoning}
-              </div>
-            </div>
-
-            {result.official_sources && result.official_sources.length > 0 && (
-              <div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1, fontWeight: 600, marginBottom: 12 }}>
-                  Official Sources to Verify
-                </div>
-                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                  {result.official_sources.map((source, i) => (
-                    <div key={i} style={{
-                      display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px',
-                      background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)',
-                      borderRadius: 99, fontSize: 12, color: 'var(--text-secondary)'
-                    }}>
-                      <ExternalLink size={12} style={{ color: 'var(--color-primary)' }} />
-                      {source}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </motion.div>
         )}
       </AnimatePresence>

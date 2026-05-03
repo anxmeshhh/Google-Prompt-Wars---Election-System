@@ -86,6 +86,88 @@ class GeminiService:
             return self._fallback_response(prompt)
         return self._generate_sync(prompt, system_instruction, agent)
 
+    def generate_stream(self, prompt: str, system_instruction: str = '', agent: str = ''):
+        """Streaming generator yielding text chunks."""
+        if not self._configured:
+            yield self._fallback_response(prompt)
+            return
+
+        start_time = time.time()
+        
+        # Try Groq first
+        if self.groq_api_key:
+            try:
+                headers = {
+                    "Authorization": f"Bearer {self.groq_api_key}",
+                    "Content-Type": "application/json"
+                }
+                data = {
+                    "model": self.groq_model,
+                    "messages": [
+                        {"role": "system", "content": system_instruction or "You are a helpful assistant."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "stream": True
+                }
+                res = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=data, timeout=12, stream=True)
+                res.raise_for_status()
+                
+                for line in res.iter_lines():
+                    if line:
+                        line_str = line.decode('utf-8')
+                        if line_str.startswith('data: '):
+                            json_str = line_str[6:]
+                            if json_str.strip() == '[DONE]':
+                                break
+                            try:
+                                chunk = json.loads(json_str)
+                                delta = chunk['choices'][0]['delta']
+                                if 'content' in delta:
+                                    yield delta['content']
+                            except Exception:
+                                pass
+                                
+                duration_ms = int((time.time() - start_time) * 1000)
+                import eventlet
+                eventlet.spawn(self._track_usage, agent or 'unknown', duration_ms, True, 'groq')
+                return
+            except Exception as groq_e:
+                print(f"Groq streaming failed, falling back to Gemini: {groq_e}")
+
+        # Fallback to Gemini Streaming
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model_name}:streamGenerateContent?alt=sse&key={self.api_key}"
+            headers = {"Content-Type": "application/json"}
+            data = {
+                "system_instruction": {"parts": {"text": system_instruction or "You are a helpful assistant."}},
+                "contents": [{"parts": [{"text": prompt}]}]
+            }
+            res = requests.post(url, headers=headers, json=data, timeout=12, stream=True)
+            res.raise_for_status()
+            
+            for line in res.iter_lines():
+                if line:
+                    line_str = line.decode('utf-8')
+                    if line_str.startswith('data: '):
+                        json_str = line_str[6:]
+                        try:
+                            chunk = json.loads(json_str)
+                            if 'candidates' in chunk and len(chunk['candidates']) > 0:
+                                parts = chunk['candidates'][0].get('content', {}).get('parts', [])
+                                if parts and 'text' in parts[0]:
+                                    yield parts[0]['text']
+                        except Exception:
+                            pass
+                            
+            duration_ms = int((time.time() - start_time) * 1000)
+            import eventlet
+            eventlet.spawn(self._track_usage, agent or 'unknown', duration_ms, True, 'gemini')
+        except Exception as e:
+            duration_ms = int((time.time() - start_time) * 1000)
+            import eventlet
+            eventlet.spawn(self._track_usage, agent or 'unknown', duration_ms, False, 'gemini')
+            yield f"\n\n[AI service temporarily unavailable. Error: {str(e)}]"
+
     def _generate_json_sync(self, prompt: str, system_instruction: str, agent: str) -> str:
         """Internal synchronous JSON generation — tries Groq first (fast), falls back to Gemini."""
         start_time = time.time()
@@ -178,7 +260,8 @@ class GeminiService:
 
         try:
             from services.gcloud_logging_service import log_agent_action
-            log_agent_action(agent, f'{provider}_generate', duration_ms)
+            import eventlet
+            eventlet.spawn(log_agent_action, agent, f'{provider}_generate', duration_ms)
         except Exception:
             pass
 

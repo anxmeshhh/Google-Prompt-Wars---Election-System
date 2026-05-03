@@ -73,6 +73,31 @@ Respond with ONLY the agent name, no explanation."""
             'response': response,
         }
 
+    def route_and_respond_stream(self, message: str, live_context: dict, user_role: str):
+        """Streaming version of route_and_respond."""
+        agent_name = self.classify_intent(message)
+        context_str = self._build_context_string(live_context)
+
+        if agent_name == 'election_analyst':
+            system = self._get_election_analyst_system(context_str, user_role)
+        elif agent_name == 'fact_checker':
+            system = self._get_fact_checker_system(context_str, user_role)
+        elif agent_name == 'incident_responder':
+            system = self._get_incident_responder_system(context_str, user_role)
+        elif agent_name == 'queue_manager':
+            system = self._get_queue_manager_system(context_str, user_role)
+        else:
+            system = self._get_election_analyst_system(context_str, user_role)
+
+        agent_label = self.AGENT_MAP.get(agent_name, 'ElectionAnalyst')
+
+        # Yield metadata first
+        yield json.dumps({'type': 'metadata', 'agent': agent_name, 'agent_label': agent_label}) + "\n"
+
+        # Yield chunks
+        for chunk in self.gemini.generate_stream(message, system_instruction=system, agent=agent_name):
+            yield json.dumps({'type': 'chunk', 'text': chunk}) + "\n"
+
     def _build_context_string(self, ctx: dict) -> str:
         """Convert live simulation state into a readable context block for agent prompts."""
         if not ctx:
@@ -115,8 +140,8 @@ Respond with ONLY the agent name, no explanation."""
 
     # ── Specialist Agent Implementations ──
 
-    def _election_analyst(self, message: str, context: str, role: str) -> str:
-        system = f"""You are ElectaVerse's Election Analyst — India's most knowledgeable election expert.
+    def _get_election_analyst_system(self, context: str, role: str) -> str:
+        return f"""You are ElectaVerse's Election Analyst — India's most knowledgeable election expert.
 You have deep expertise in: ECI procedures, EVM/VVPAT technology, Model Code of Conduct,
 Lok Sabha / Rajya Sabha / State Assembly processes, electoral roll management, and Indian constitutional provisions for elections.
 
@@ -132,10 +157,11 @@ IMPORTANT: You have access to LIVE election simulation data. Use it to make your
 Format your response in clean markdown. Use bullet points and headers for readability.
 Be concise but thorough. If the live data is relevant to the question, reference it naturally."""
 
-        return self.gemini.generate(message, system_instruction=system)
+    def _election_analyst(self, message: str, context: str, role: str) -> str:
+        return self.gemini.generate(message, system_instruction=self._get_election_analyst_system(context, role))
 
-    def _fact_checker(self, message: str, context: str, role: str) -> str:
-        system = f"""You are ElectaVerse's Fact Checker — a meticulous election misinformation analyst.
+    def _get_fact_checker_system(self, context: str, role: str) -> str:
+        return f"""You are ElectaVerse's Fact Checker — a meticulous election misinformation analyst.
 Your job is to analyze claims about Indian elections and provide structured verdicts.
 
 You are speaking to a user with the role: {role.upper()}.
@@ -159,10 +185,11 @@ For every claim, structure your response as:
 
 Be rigorous. If a claim is partially true, mark it MISLEADING and explain why."""
 
-        return self.gemini.generate(message, system_instruction=system)
+    def _fact_checker(self, message: str, context: str, role: str) -> str:
+        return self.gemini.generate(message, system_instruction=self._get_fact_checker_system(context, role))
 
-    def _incident_responder(self, message: str, context: str, role: str) -> str:
-        system = f"""You are ElectaVerse's Incident Responder — an election day crisis coordinator.
+    def _get_incident_responder_system(self, context: str, role: str) -> str:
+        return f"""You are ElectaVerse's Incident Responder — an election day crisis coordinator.
 You understand ECI protocols for handling booth-level incidents including EVM malfunctions,
 VVPAT issues, voter disputes, crowd control, accessibility problems, and power outages.
 
@@ -181,10 +208,11 @@ Structure your response with:
 - **Escalation Path** (who to contact)
 - **Estimated Resolution**"""
 
-        return self.gemini.generate(message, system_instruction=system)
+    def _incident_responder(self, message: str, context: str, role: str) -> str:
+        return self.gemini.generate(message, system_instruction=self._get_incident_responder_system(context, role))
 
-    def _queue_manager(self, message: str, context: str, role: str) -> str:
-        system = f"""You are ElectaVerse's Queue Manager — a real-time queue analytics expert.
+    def _get_queue_manager_system(self, context: str, role: str) -> str:
+        return f"""You are ElectaVerse's Queue Manager — a real-time queue analytics expert.
 You understand Poisson arrival models, throughput dynamics, time-of-day patterns,
 and can make data-driven predictions about wait times and optimal voting windows.
 
@@ -202,4 +230,5 @@ When asked about queues or wait times:
 
 Format in clear markdown with specific numbers from the live data."""
 
-        return self.gemini.generate(message, system_instruction=system)
+    def _queue_manager(self, message: str, context: str, role: str) -> str:
+        return self.gemini.generate(message, system_instruction=self._get_queue_manager_system(context, role))

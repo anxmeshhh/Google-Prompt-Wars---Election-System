@@ -73,24 +73,24 @@ export default function AIAssistant({ token, userRole, stats }: Props) {
       .then(data => {
         if (data.history) {
           setHistory(data.history)
-          
+
           // Populate main chat view (history comes DESC, so reverse it)
           const loadedMessages: ChatMessage[] = []
-          ;[...data.history].reverse().forEach((item: any) => {
-            loadedMessages.push({
-              id: ++msgId.current,
-              role: 'user',
-              text: item.message,
-              timestamp: new Date(item.timestamp)
+            ;[...data.history].reverse().forEach((item: any) => {
+              loadedMessages.push({
+                id: ++msgId.current,
+                role: 'user',
+                text: item.message,
+                timestamp: new Date(item.timestamp)
+              })
+              loadedMessages.push({
+                id: ++msgId.current,
+                role: 'ai',
+                text: item.response,
+                agent: item.agent,
+                timestamp: new Date(item.timestamp)
+              })
             })
-            loadedMessages.push({
-              id: ++msgId.current,
-              role: 'ai',
-              text: item.response,
-              agent: item.agent,
-              timestamp: new Date(item.timestamp)
-            })
-          })
           setMessages(loadedMessages)
         }
       })
@@ -215,7 +215,7 @@ export default function AIAssistant({ token, userRole, stats }: Props) {
             border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
             color: 'var(--text-primary)', cursor: 'pointer', transition: 'all 0.2s',
           }} onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-             onMouseOut={e => e.currentTarget.style.background = 'transparent'}>
+            onMouseOut={e => e.currentTarget.style.background = 'transparent'}>
             <Plus size={16} /> New Chat
           </button>
         </div>
@@ -268,7 +268,7 @@ export default function AIAssistant({ token, userRole, stats }: Props) {
 
       {/* ── MAIN CHAT AREA ── */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)', position: 'relative' }}>
-        
+
         {/* Header / Live Stats */}
         {stats && (
           <div style={{
@@ -294,7 +294,7 @@ export default function AIAssistant({ token, userRole, stats }: Props) {
         {/* Messages */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '32px 0' }}>
           <div style={{ maxWidth: 800, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 32, padding: '0 24px' }}>
-            
+
             {messages.length === 0 ? (
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
                 style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: 400, gap: 24 }}>
@@ -307,7 +307,7 @@ export default function AIAssistant({ token, userRole, stats }: Props) {
                 </div>
                 <h2 style={{ margin: 0, fontSize: 24 }}>How can I assist you today?</h2>
                 <p style={{ color: 'var(--text-muted)', textAlign: 'center', maxWidth: 500, margin: 0, lineHeight: 1.6 }}>
-                  I have real-time access to the election simulation. I can check queue times, 
+                  I have real-time access to the election simulation. I can check queue times,
                   verify claims, explain procedures, or triage incidents based on your role.
                 </p>
 
@@ -347,7 +347,7 @@ export default function AIAssistant({ token, userRole, stats }: Props) {
                         : msg.agent ? (AGENT_COLORS[msg.agent] || 'var(--bg-secondary)') + '20' : 'rgba(99,102,241,0.2)',
                       border: msg.role === 'user' ? '1px solid var(--border)' : `1px solid ${AGENT_COLORS[msg.agent || ''] || 'var(--color-primary)'}40`,
                     }}>
-                      {msg.role === 'user' ? <User size={20} style={{color: 'var(--text-secondary)'}} /> : (AGENT_ICONS[msg.agent || ''] || '🤖')}
+                      {msg.role === 'user' ? <User size={20} style={{ color: 'var(--text-secondary)' }} /> : (AGENT_ICONS[msg.agent || ''] || '🤖')}
                     </div>
 
                     {/* Content */}
@@ -355,7 +355,7 @@ export default function AIAssistant({ token, userRole, stats }: Props) {
                       {/* Name Plate */}
                       <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
                         {msg.role === 'user' ? 'You' : (AGENT_NAMES[msg.agent || ''] || 'Assistant')}
-                        
+
                         {msg.role === 'ai' && msg.liveContext && (
                           <span style={{
                             fontSize: 10, fontWeight: 500, color: 'var(--color-success)', padding: '2px 6px',
